@@ -23,11 +23,16 @@ AZUL_CLARO = "#E6F1FB"
 PROMPT_SISTEMA = """Você é um analista de qualidade de leads de uma plataforma de geração de leads B2B.
 Sua tarefa: para cada lead abaixo, decidir se ele está DENTRO ou FORA do foco do cliente descrito no perfil, ou se está ABERTO (mensagem sem informação suficiente para avaliar).
 
+ANTES DE CLASSIFICAR: identifique no perfil O QUE o cliente vende — um PRODUTO (ex. máquinas, equipamentos) ou um SERVIÇO (ex. corte sob medida, usinagem para terceiros). Essa distinção é o critério mais importante.
+
 Critérios (avalie em conjunto, nenhum sozinho decide):
-1. Material/produto compatível com o portfólio do cliente. Se o cliente trabalha metal e o lead pede madeira/tecido/PVC, é forte sinal de "Fora do foco", mesmo que o serviço seja o mesmo.
-2. B2B vs. uso pessoal. Pedidos claramente domésticos/pontuais de pessoa física pesam para "Fora do foco" quando o cliente atende indústria/B2B.
-3. Especificidade técnica. Medidas, normas, quantidade definida, nome de empresa/CNPJ pesam para "Dentro do foco". Mensagens vagas sem material/aplicação tendem a "Aberto".
-4. Sinais de ruído. Teste interno (QA, e-mails de qualidade), spam, concorrente se oferecendo, ou lead avisando que já comprou em outro lugar = "Fora do foco" independente do produto.
+1. Produto vs. serviço. Se o cliente VENDE MÁQUINAS e o lead quer CONTRATAR o serviço (ex. "preciso cortar 50 chapas", "orçamento para corte de peças"), é "Fora do foco" — mesmo que a mensagem seja tecnicamente detalhada (material, medidas, CNPJ). Especificidade técnica NÃO transforma um pedido de serviço em lead de máquina. O inverso também vale (cliente presta serviço e lead quer comprar máquina). Salvo se o perfil disser que o cliente atende ambos.
+2. Modalidade compatível. Pedidos de assistência técnica/manutenção, aluguel de máquina, ou peças/componentes avulsos são "Fora do foco" quando o cliente vende equipamentos novos — salvo indicação contrária no perfil ou nas regras específicas.
+3. Material/produto compatível com o portfólio do cliente. Se o cliente trabalha metal e o lead pede madeira/tecido/PVC, é forte sinal de "Fora do foco", mesmo que o serviço seja o mesmo.
+4. B2B vs. uso pessoal. Pedidos claramente domésticos/pontuais de pessoa física pesam para "Fora do foco" quando o cliente atende indústria/B2B.
+5. Especificidade técnica. Medidas, normas, quantidade definida, nome de empresa/CNPJ pesam para "Dentro do foco" — mas SOMENTE quando o pedido é da modalidade certa (ver critério 1).
+6. Sinais de ruído. Teste interno (QA, e-mails de qualidade), spam, concorrente se oferecendo, marca/modelo que o cliente não vende, ou lead avisando que já comprou em outro lugar = "Fora do foco" independente do produto.
+7. Regras específicas do cliente (se fornecidas no perfil) têm prioridade sobre os critérios gerais.
 
 Regras de saída:
 - STATUS deve ser EXATAMENTE um destes: "Dentro do foco", "Fora do foco", "Aberto".
@@ -131,7 +136,14 @@ arquivos_txt = st.file_uploader(
 st.markdown(f"<p style='color:{AZUL_ESCURO}; font-weight:600;'>2. Site do cliente (opcional)</p>", unsafe_allow_html=True)
 site = st.text_input("URL do site", placeholder="https://www.sitedocliente.com.br", label_visibility="collapsed")
 
-st.markdown(f"<p style='color:{AZUL_ESCURO}; font-weight:600;'>3. CSV de leads</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='color:{AZUL_ESCURO}; font-weight:600;'>3. Regras específicas do cliente (opcional)</p>", unsafe_allow_html=True)
+regras = st.text_area(
+    "Regras específicas", label_visibility="collapsed",
+    placeholder="Ex.: O cliente SÓ VENDE máquinas — pedidos de serviço de corte, assistência técnica, aluguel ou peças avulsas são Fora do foco.",
+    height=80,
+)
+
+st.markdown(f"<p style='color:{AZUL_ESCURO}; font-weight:600;'>4. CSV de leads</p>", unsafe_allow_html=True)
 arquivo_csv = st.file_uploader("Envie o CSV", type=["csv"], label_visibility="collapsed")
 
 with st.expander("Configurações das colunas"):
@@ -157,6 +169,8 @@ if st.button("Validar leads", type="primary", use_container_width=True):
         if conteudo:
             partes.append(f"===== {f.name} =====\n{conteudo}")
     perfil = "\n\n".join(partes)
+    if regras.strip():
+        perfil = f"===== REGRAS ESPECÍFICAS DO CLIENTE (prioridade máxima) =====\n{regras.strip()}\n\n" + perfil
     if site.strip():
         with st.spinner("Lendo o site do cliente..."):
             texto_site = buscar_site(site.strip())
@@ -196,30 +210,40 @@ if st.button("Validar leads", type="primary", use_container_width=True):
             "extra": extra,
         })
 
-    # Classificação
+    # Classificação (com segunda passada automática para lotes que falharem)
     classificacoes = {}
-    total_lotes = (len(leads) + TAMANHO_LOTE - 1) // TAMANHO_LOTE
-    progresso = st.progress(0, text=f"Classificando {len(leads)} leads...")
-    falhas = 0
-    for n in range(total_lotes):
-        lote = leads[n * TAMANHO_LOTE:(n + 1) * TAMANHO_LOTE]
-        try:
-            resultado = chamar_groq(api_key, perfil, lote)
-        except Exception:
-            falhas += len(lote)
-            resultado = []
-        for item in resultado:
-            status = str(item.get("status", "")).strip()
-            if status not in STATUS_VALIDOS:
-                status = "Aberto"
-            classificacoes[str(item.get("id", "")).strip()] = {
-                "status": status,
-                "motivo": str(item.get("motivo", "")).strip(),
-            }
-        progresso.progress((n + 1) / total_lotes, text=f"Lote {n+1} de {total_lotes} concluído")
-        if n + 1 < total_lotes:
-            time.sleep(3)
-    progresso.empty()
+
+    def processar(lista, tamanho_lote, rotulo):
+        total_lotes = (len(lista) + tamanho_lote - 1) // tamanho_lote
+        progresso = st.progress(0, text=f"{rotulo}: {len(lista)} leads...")
+        for n in range(total_lotes):
+            lote = lista[n * tamanho_lote:(n + 1) * tamanho_lote]
+            try:
+                resultado = chamar_groq(api_key, perfil, lote)
+            except Exception:
+                resultado = []
+            for item in resultado:
+                status = str(item.get("status", "")).strip()
+                if status not in STATUS_VALIDOS:
+                    status = "Aberto"
+                classificacoes[str(item.get("id", "")).strip()] = {
+                    "status": status,
+                    "motivo": str(item.get("motivo", "")).strip(),
+                }
+            progresso.progress((n + 1) / total_lotes, text=f"{rotulo}: lote {n+1} de {total_lotes}")
+            if n + 1 < total_lotes:
+                time.sleep(3)
+        progresso.empty()
+
+    processar(leads, TAMANHO_LOTE, "Classificando")
+
+    pendentes = [l for l in leads if l["id"] not in classificacoes]
+    if pendentes:
+        st.info(f"{len(pendentes)} lead(s) sem resposta na primeira passada — tentando de novo em lotes menores...")
+        time.sleep(10)
+        processar(pendentes, 5, "Reprocessando")
+
+    falhas = sum(1 for l in leads if l["id"] not in classificacoes)
 
     # CSV de saída
     saida = io.StringIO()
