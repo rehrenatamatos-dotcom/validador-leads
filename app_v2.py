@@ -1,5 +1,5 @@
 # Validador de Leads v2 (beta) — Soluções Industriais
-# Busca briefing e orçamentos direto do Metabase; nutrições via Google Sheets (opcional).
+# Busca briefing e orçamentos direto do Metabase; observações do projeto via questionário.
 # O usuário só informa: nome da empresa, chave única e intervalo de datas.
 
 import csv
@@ -13,26 +13,6 @@ from datetime import date, datetime, timedelta
 import requests
 import streamlit as st
 
-ARQUIVO_HISTORICO = "historico.json"
-
-
-def carregar_historico():
-    try:
-        with open(ARQUIVO_HISTORICO, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def salvar_no_historico(registro):
-    historico = carregar_historico()
-    historico.insert(0, registro)
-    try:
-        with open(ARQUIVO_HISTORICO, "w", encoding="utf-8") as f:
-            json.dump(historico[:200], f, ensure_ascii=False)
-    except Exception:
-        pass
-
 MODELO = "meta-llama/llama-4-scout-17b-16e-instruct"
 MODELO_RESERVA = "llama-3.3-70b-versatile"
 URL_GROQ = "https://api.groq.com/openai/v1/chat/completions"
@@ -43,11 +23,14 @@ LIMITE_PERFIL = 14000
 STATUS_VALIDOS = {"Dentro do foco", "Fora do foco", "Aberto"}
 
 CARD_ORCAMENTOS = 47   # question do Metabase: base de orçamentos por chave única
-CARD_BRIEFING = 63     # question do Metabase: dados do briefing do cliente
+CARD_BRIEFING = 286    # question do Metabase: briefing do cliente por chave única
+CARD_ANUNCIOS = 185    # question do Metabase: anúncios por chave única
 
 AZUL = "#185FA5"
 AZUL_ESCURO = "#0C447C"
 AZUL_CLARO = "#E6F1FB"
+
+ARQUIVO_HISTORICO = "historico.json"
 
 PROMPT_SISTEMA = """Você é um analista de qualidade de leads de uma plataforma de geração de leads B2B.
 Sua tarefa: para cada lead abaixo, decidir se ele está DENTRO ou FORA do foco do cliente descrito no perfil, ou se está ABERTO (mensagem sem informação suficiente para avaliar).
@@ -72,13 +55,32 @@ Regras de saída:
 - Responda SOMENTE com um objeto JSON: {"resultados": [{"id": "...", "status": "...", "motivo": "..."}]} — um item por lead, na mesma ordem."""
 
 
+# ---------- Histórico ----------
+
+def carregar_historico():
+    try:
+        with open(ARQUIVO_HISTORICO, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def salvar_no_historico(registro):
+    historico = carregar_historico()
+    historico.insert(0, registro)
+    try:
+        with open(ARQUIVO_HISTORICO, "w", encoding="utf-8") as f:
+            json.dump(historico[:200], f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
 # ---------- Metabase ----------
 
 def secret(nome, padrao=""):
     try:
         return str(st.secrets.get(nome, padrao)).strip()
     except Exception:
-        import os
         return os.environ.get(nome, padrao).strip()
 
 
@@ -137,21 +139,17 @@ def buscar_site(url, limite=LIMITE_FONTE):
     return re.sub(r"\s+", " ", texto).strip()[:limite]
 
 
-def buscar_nutricoes_sheets(link, limite=LIMITE_FONTE):
-    """Lê uma planilha do Google Sheets compartilhada por link (qualquer pessoa pode ver)."""
-    m = re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", link)
-    if not m:
+def csv_anuncios_para_texto(conteudo_csv, limite=LIMITE_FONTE):
+    """Transforma o CSV de anúncios em uma lista compacta de nomes."""
+    linhas = list(csv.reader(io.StringIO(conteudo_csv)))
+    if len(linhas) < 2:
         return ""
-    gid = re.search(r"[#&?]gid=(\d+)", link)
-    url = f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=csv"
-    if gid:
-        url += f"&gid={gid.group(1)}"
-    try:
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-        return r.text[:limite]
-    except Exception:
-        return ""
+    itens = []
+    for r in linhas[1:]:
+        valores = [c.strip() for c in r if c.strip()]
+        if valores:
+            itens.append(" | ".join(valores))
+    return "\n".join(itens)[:limite]
 
 
 def csv_briefing_para_texto(conteudo_csv, limite=LIMITE_FONTE):
@@ -221,7 +219,6 @@ IMG_FUNDO = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1600
 
 st.markdown(f"""
 <style>
-  /* Fundo: foto industrial real + camada azul */
   [data-testid="stAppViewContainer"] {{
     background:
       linear-gradient(rgba(12, 68, 124, 0.86), rgba(10, 58, 107, 0.90)),
@@ -229,7 +226,6 @@ st.markdown(f"""
   }}
   [data-testid="stHeader"] {{ background: transparent; }}
 
-  /* Painel de vidro central */
   .block-container {{
     background: rgba(255, 255, 255, 0.13);
     backdrop-filter: blur(16px);
@@ -241,7 +237,6 @@ st.markdown(f"""
     max-width: 780px;
   }}
 
-  /* Textos claros sobre o vidro */
   .block-container label, .block-container p, .block-container .stMarkdown,
   .block-container [data-testid="stWidgetLabel"] p {{ color: #EAF3FC !important; }}
 
@@ -270,39 +265,60 @@ st.markdown(f"""
 </style>
 <div class="header-si">
   <h1>Validador de Leads <span style="font-size:0.8rem; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.4); color:#fff; padding:2px 10px; border-radius:20px; vertical-align:middle;">v2 beta</span></h1>
-  <p>Soluções Industriais — busca briefing e orçamentos direto do Metabase</p>
+  <p>Soluções Industriais</p>
 </div>
 """, unsafe_allow_html=True)
 
+CAMPOS_FORM = ("f_chave", "f_site", "f_modalidades", "f_lote",
+               "f_regiao", "f_materiais", "f_nao_atende", "f_obs")
 if st.session_state.pop("limpar_form", False):
-    for k in ("f_empresa", "f_chave", "f_site", "f_nutri", "f_regras"):
+    for k in CAMPOS_FORM:
         st.session_state.pop(k, None)
 
-col_a, col_b = st.columns(2)
+col_a, col_c, col_d = st.columns([1.2, 1, 1])
 with col_a:
-    nome_empresa = st.text_input("Nome da empresa (como está no Metabase)", placeholder="Atram Tecnologia da Qualidade", key="f_empresa")
-with col_b:
-    chave_unica = st.text_input("Chave única", placeholder="224-44365-1", key="f_chave")
-
-col_c, col_d = st.columns(2)
+    chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
 with col_c:
-    data_inicio = st.date_input("Data início", value=date.today() - timedelta(days=90))
+    data_inicio = st.date_input("Data início", value=date.today() - timedelta(days=90), format="DD/MM/YYYY")
 with col_d:
-    data_fim = st.date_input("Data fim", value=date.today())
+    data_fim = st.date_input("Data fim", value=date.today(), format="DD/MM/YYYY")
 
 site = st.text_input("Site do cliente (opcional)", placeholder="https://www.sitedocliente.com.br", key="f_site")
-link_nutricoes = st.text_input(
-    "Planilha de nutrições no Google Sheets (opcional)",
-    placeholder="https://docs.google.com/spreadsheets/d/...",
-    help="A planilha precisa estar compartilhada como 'qualquer pessoa com o link pode ver'.",
-    key="f_nutri",
+
+st.markdown("<p style='font-weight:600; margin-top:8px;'>Observações do projeto</p>", unsafe_allow_html=True)
+modalidades = st.multiselect(
+    "O que o cliente faz? (marque tudo que se aplica)",
+    ["Vende produto/máquina", "Presta serviço", "Aluga equipamento", "Assistência técnica", "Vende peças/insumos"],
+    key="f_modalidades",
+    help="Tudo que NÃO estiver marcado será tratado como Fora do foco.",
 )
-regras = st.text_area(
-    "Regras específicas do cliente (opcional)",
-    placeholder="Ex.: O cliente SÓ VENDE máquinas — pedidos de serviço de corte, assistência técnica, aluguel ou peças avulsas são Fora do foco.",
-    height=80,
-    key="f_regras",
-)
+col_e, col_f = st.columns(2)
+with col_e:
+    lote_minimo = st.text_input("Lote mínimo (opcional)", placeholder="Ex.: 500 peças / R$ 5.000", key="f_lote")
+with col_f:
+    regiao = st.text_input("Região de atendimento (opcional)", placeholder="Ex.: só Sul e Sudeste", key="f_regiao")
+materiais = st.text_input("Materiais/segmentos que trabalha (opcional)", placeholder="Ex.: só metais — aço carbono, inox, alumínio", key="f_materiais")
+nao_atende = st.text_input("O que NÃO atende (opcional)", placeholder="Ex.: não trabalha madeira/acrílico; não vende para pessoa física", key="f_nao_atende")
+obs = st.text_area("Outras observações (opcional)", placeholder="Qualquer detalhe do projeto que ajude a julgar os leads.", height=70, key="f_obs")
+
+
+def montar_regras():
+    partes = []
+    if modalidades:
+        partes.append("O cliente atua APENAS nestas modalidades: " + ", ".join(modalidades)
+                      + ". Leads pedindo qualquer modalidade não listada = Fora do foco.")
+    if lote_minimo.strip():
+        partes.append(f"Lote mínimo: {lote_minimo.strip()}. Pedidos claramente abaixo disso pesam para Fora do foco.")
+    if regiao.strip():
+        partes.append(f"Região de atendimento: {regiao.strip()}. Leads claramente de fora dessa região = Fora do foco.")
+    if materiais.strip():
+        partes.append(f"Materiais/segmentos que o cliente trabalha: {materiais.strip()}.")
+    if nao_atende.strip():
+        partes.append(f"O cliente NÃO atende: {nao_atende.strip()}. Leads pedindo isso = Fora do foco.")
+    if obs.strip():
+        partes.append(f"Outras observações do projeto: {obs.strip()}")
+    return "\n".join(f"- {x}" for x in partes)
+
 
 col_btn1, col_btn2 = st.columns([3, 1])
 with col_btn2:
@@ -320,23 +336,38 @@ if validar:
     if not secret("METABASE_URL"):
         st.error("Segredo METABASE_URL não configurado (ex.: https://metabase.ferramentademarketing.com.br).")
         st.stop()
-    if not nome_empresa.strip() or not chave_unica.strip():
-        st.error("Preencha o nome da empresa e a chave única.")
+    if not chave_unica.strip():
+        st.error("Preencha a chave única do cliente.")
         st.stop()
 
-    # 1. Briefing (question 63)
+    # 1. Briefing (question 286 — por chave única)
     with st.spinner("Buscando briefing no Metabase..."):
         try:
             csv_briefing = consultar_question(CARD_BRIEFING, [
-                ("nome_da_Empresa", nome_empresa.strip(), "category"),
+                ("chave_unica", chave_unica.strip(), "category"),
             ])
         except Exception as e:
             st.error(f"Erro ao buscar o briefing (question {CARD_BRIEFING}): {e}")
             st.stop()
     texto_briefing = csv_briefing_para_texto(csv_briefing)
     if not texto_briefing:
-        st.error(f'Briefing vazio para "{nome_empresa}". Confira se o nome está exatamente como no Metabase.')
+        st.error(f'Briefing vazio para a chave "{chave_unica}". Confira se a chave está correta.')
         st.stop()
+
+    # Nome da empresa extraído do próprio briefing (para arquivo e histórico)
+    nome_empresa = chave_unica.strip()
+    try:
+        _linhas_b = list(csv.reader(io.StringIO(csv_briefing)))
+        _h = [c.strip().lower() for c in _linhas_b[0]]
+        for _cand in ("nome da empresa", "nome fantasia", "empresa"):
+            if _cand in _h:
+                _v = _linhas_b[1][_h.index(_cand)].strip()
+                if _v:
+                    nome_empresa = _v
+                break
+    except Exception:
+        pass
+    st.caption(f"Cliente identificado: {nome_empresa}")
 
     # 2. Orçamentos (question 47)
     with st.spinner("Buscando orçamentos no Metabase..."):
@@ -354,22 +385,29 @@ if validar:
         st.error("Nenhum orçamento encontrado para essa chave única nesse período.")
         st.stop()
 
-    # 3. Perfil do cliente
+    # 3. Anúncios ativos (question 185 — opcional, não bloqueia se falhar)
+    texto_anuncios = ""
+    with st.spinner("Buscando anúncios do cliente no Metabase..."):
+        try:
+            csv_anuncios = consultar_question(CARD_ANUNCIOS, [
+                ("chave_unica", chave_unica.strip(), "category"),
+            ])
+            texto_anuncios = csv_anuncios_para_texto(csv_anuncios)
+        except Exception:
+            st.warning("Não consegui buscar os anúncios (question 185) — prosseguindo sem eles.")
+
+    # 4. Perfil do cliente
     perfil = f"===== BRIEFING DO CLIENTE (Metabase) =====\n{texto_briefing}"
-    if regras.strip():
-        perfil = f"===== REGRAS ESPECÍFICAS DO CLIENTE (prioridade máxima) =====\n{regras.strip()}\n\n" + perfil
+    regras_projeto = montar_regras()
+    if regras_projeto:
+        perfil = f"===== OBSERVAÇÕES DO PROJETO (prioridade máxima) =====\n{regras_projeto}\n\n" + perfil
+    if texto_anuncios:
+        perfil += f"\n\n===== ANÚNCIOS ATIVOS DO CLIENTE (termos anunciados) =====\n{texto_anuncios}"
     if site.strip():
         with st.spinner("Lendo o site do cliente..."):
             texto_site = buscar_site(site.strip())
         if texto_site:
             perfil += f"\n\n===== SITE DO CLIENTE =====\n{texto_site}"
-    if link_nutricoes.strip():
-        with st.spinner("Lendo as nutrições no Sheets..."):
-            texto_nutri = buscar_nutricoes_sheets(link_nutricoes.strip())
-        if texto_nutri:
-            perfil += f"\n\n===== NUTRIÇÕES/HISTÓRICO =====\n{texto_nutri}"
-        else:
-            st.warning("Não consegui ler a planilha de nutrições — confira o compartilhamento por link.")
     if len(perfil) > LIMITE_PERFIL:
         perfil = perfil[:LIMITE_PERFIL] + "\n[... perfil truncado para caber no limite da IA gratuita ...]"
 
@@ -463,7 +501,7 @@ if validar:
         "Aberto": contagem["Aberto"],
     })
 
-st.markdown(f"<p style='color:{AZUL_ESCURO}; font-weight:600; margin-top:32px;'>Histórico de validações</p>", unsafe_allow_html=True)
+st.markdown("<p style='font-weight:600; margin-top:32px;'>Histórico de validações</p>", unsafe_allow_html=True)
 historico = carregar_historico()
 if historico:
     st.dataframe(historico, use_container_width=True, hide_index=True)
@@ -471,7 +509,7 @@ else:
     st.caption("Nenhuma validação registrada ainda. As próximas aparecerão aqui com data, empresa e resultado.")
 
 st.markdown(
-    "<p style='text-align:center; color:#8a8a8a; font-size:0.75rem; margin-top:32px;'>"
+    "<p style='text-align:center; color:#B5D4F4; font-size:0.75rem; margin-top:32px;'>"
     "Validador de Leads v2 beta · Soluções Industriais</p>",
     unsafe_allow_html=True,
 )
