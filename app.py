@@ -10,10 +10,13 @@ import time
 import requests
 import streamlit as st
 
-MODELO = "llama-3.3-70b-versatile"
+MODELO = "meta-llama/llama-4-scout-17b-16e-instruct"
+MODELO_RESERVA = "llama-3.3-70b-versatile"
 URL_GROQ = "https://api.groq.com/openai/v1/chat/completions"
 TAMANHO_LOTE = 15
-MAX_TENTATIVAS = 4
+MAX_TENTATIVAS = 5
+LIMITE_ARQUIVO = 5000   # chars por arquivo de insumo (economiza tokens/minuto)
+LIMITE_PERFIL = 14000   # chars do perfil completo
 STATUS_VALIDOS = {"Dentro do foco", "Fora do foco", "Aberto"}
 
 AZUL = "#185FA5"
@@ -36,8 +39,10 @@ Critérios (avalie em conjunto, nenhum sozinho decide):
 
 Regras de saída:
 - STATUS deve ser EXATAMENTE um destes: "Dentro do foco", "Fora do foco", "Aberto".
-- MOTIVO: uma frase objetiva em português citando a evidência da própria mensagem.
-- Duplicatas (mesma mensagem) recebem a mesma classificação.
+- MOTIVO: uma frase objetiva em português citando a evidência da própria mensagem. O motivo deve justificar o STATUS escolhido, não outro.
+- Mensagens vagas demais para julgar (ex. apenas "aço inox", apenas "me manda o e-mail", uma palavra solta sem contexto de compra) = "Aberto". NUNCA marque "Dentro do foco" sem evidência de interesse na modalidade certa (compra do produto que o cliente vende).
+- Peças, componentes e insumos avulsos (ex. fonte, tubo de laser, lentes) = "Fora do foco" quando o cliente vende máquinas completas, salvo indicação contrária no perfil.
+- Mensagens idênticas ou quase idênticas (mesmo texto em vários leads) DEVEM receber exatamente a mesma classificação e o mesmo motivo — revise antes de responder.
 - Responda SOMENTE com um objeto JSON: {"resultados": [{"id": "...", "status": "...", "motivo": "..."}]} — um item por lead, na mesma ordem."""
 
 
@@ -85,8 +90,11 @@ def chamar_groq(api_key, perfil, lote):
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=120,
             )
+            if r.status_code == 404:
+                corpo["model"] = MODELO_RESERVA
+                continue
             if r.status_code == 429 or r.status_code >= 500:
-                time.sleep(min(30, 4 * tentativa))
+                time.sleep(min(60, 15 * tentativa))
                 continue
             r.raise_for_status()
             texto = r.json()["choices"][0]["message"]["content"]
@@ -167,6 +175,8 @@ if st.button("Validar leads", type="primary", use_container_width=True):
     for f in arquivos_txt:
         conteudo = f.read().decode("utf-8", errors="replace").strip()
         if conteudo:
+            if len(conteudo) > LIMITE_ARQUIVO:
+                conteudo = conteudo[:LIMITE_ARQUIVO] + "\n[... conteúdo truncado para caber no limite da IA gratuita ...]"
             partes.append(f"===== {f.name} =====\n{conteudo}")
     perfil = "\n\n".join(partes)
     if regras.strip():
@@ -178,6 +188,8 @@ if st.button("Validar leads", type="primary", use_container_width=True):
             perfil += f"\n\n===== SITE DO CLIENTE ({site.strip()}) =====\n{texto_site}"
         else:
             st.warning("Não consegui ler o site — prosseguindo sem ele.")
+    if len(perfil) > LIMITE_PERFIL:
+        perfil = perfil[:LIMITE_PERFIL] + "\n[... perfil truncado para caber no limite da IA gratuita ...]"
 
     # CSV
     try:
@@ -232,7 +244,7 @@ if st.button("Validar leads", type="primary", use_container_width=True):
                 }
             progresso.progress((n + 1) / total_lotes, text=f"{rotulo}: lote {n+1} de {total_lotes}")
             if n + 1 < total_lotes:
-                time.sleep(3)
+                time.sleep(8)
         progresso.empty()
 
     processar(leads, TAMANHO_LOTE, "Classificando")
@@ -242,6 +254,12 @@ if st.button("Validar leads", type="primary", use_container_width=True):
         st.info(f"{len(pendentes)} lead(s) sem resposta na primeira passada — tentando de novo em lotes menores...")
         time.sleep(10)
         processar(pendentes, 5, "Reprocessando")
+
+    pendentes = [l for l in leads if l["id"] not in classificacoes]
+    if pendentes:
+        st.info(f"{len(pendentes)} lead(s) ainda pendentes — última tentativa, um por vez...")
+        time.sleep(15)
+        processar(pendentes, 1, "Última passada")
 
     falhas = sum(1 for l in leads if l["id"] not in classificacoes)
 
