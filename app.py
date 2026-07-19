@@ -13,7 +13,7 @@ import streamlit as st
 MODELO = "meta-llama/llama-4-scout-17b-16e-instruct"
 MODELO_RESERVA = "llama-3.3-70b-versatile"
 URL_GROQ = "https://api.groq.com/openai/v1/chat/completions"
-TAMANHO_LOTE = 15
+TAMANHO_LOTE = 20
 MAX_TENTATIVAS = 5
 LIMITE_ARQUIVO = 5000   # chars por arquivo de insumo (economiza tokens/minuto)
 LIMITE_PERFIL = 14000   # chars do perfil completo
@@ -94,7 +94,11 @@ def chamar_groq(api_key, perfil, lote):
                 corpo["model"] = MODELO_RESERVA
                 continue
             if r.status_code == 429 or r.status_code >= 500:
-                time.sleep(min(60, 15 * tentativa))
+                try:
+                    espera = float(r.headers.get("retry-after", 0))
+                except (TypeError, ValueError):
+                    espera = 0
+                time.sleep(min(60, espera + 1) if espera else min(30, 5 * tentativa))
                 continue
             r.raise_for_status()
             texto = r.json()["choices"][0]["message"]["content"]
@@ -244,7 +248,7 @@ if st.button("Validar leads", type="primary", use_container_width=True):
                 }
             progresso.progress((n + 1) / total_lotes, text=f"{rotulo}: lote {n+1} de {total_lotes}")
             if n + 1 < total_lotes:
-                time.sleep(8)
+                time.sleep(1)
         progresso.empty()
 
     processar(leads, TAMANHO_LOTE, "Classificando")
@@ -252,13 +256,13 @@ if st.button("Validar leads", type="primary", use_container_width=True):
     pendentes = [l for l in leads if l["id"] not in classificacoes]
     if pendentes:
         st.info(f"{len(pendentes)} lead(s) sem resposta na primeira passada — tentando de novo em lotes menores...")
-        time.sleep(10)
+        time.sleep(5)
         processar(pendentes, 5, "Reprocessando")
 
     pendentes = [l for l in leads if l["id"] not in classificacoes]
     if pendentes:
         st.info(f"{len(pendentes)} lead(s) ainda pendentes — última tentativa, um por vez...")
-        time.sleep(15)
+        time.sleep(5)
         processar(pendentes, 1, "Última passada")
 
     falhas = sum(1 for l in leads if l["id"] not in classificacoes)
