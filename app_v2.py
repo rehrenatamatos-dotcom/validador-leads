@@ -244,13 +244,20 @@ st.markdown(f"""
   .header-si p {{ color: {AZUL_CLARO}; margin: 0 0 18px; font-size: 0.9rem; }}
 
   .stButton > button[kind="primary"] {{
-    background: rgba(255, 255, 255, 0.94); color: {AZUL_ESCURO};
-    border: none; font-weight: 600;
+    background: {AZUL}; border: 1px solid rgba(255,255,255,0.35); font-weight: 600;
   }}
+  .stButton > button[kind="primary"] p {{ color: #ffffff !important; }}
+  .stButton > button[kind="primary"]:hover {{ background: {AZUL_ESCURO}; }}
   .stButton > button[kind="secondary"] {{
-    background: rgba(255, 255, 255, 0.14); color: #ffffff;
+    background: rgba(255, 255, 255, 0.14);
     border: 1px solid rgba(255, 255, 255, 0.4);
   }}
+  .stButton > button[kind="secondary"] p {{ color: #ffffff !important; }}
+  .stDownloadButton > button {{
+    background: {AZUL}; border: 1px solid rgba(255,255,255,0.35); font-weight: 600;
+  }}
+  .stDownloadButton > button p {{ color: #ffffff !important; }}
+  .stDownloadButton > button:hover {{ background: {AZUL_ESCURO}; }}
 
   div[data-testid="stMetric"] {{
     background: rgba(255, 255, 255, 0.15);
@@ -326,7 +333,7 @@ with col_btn2:
         st.session_state["limpar_form"] = True
         st.rerun()
 with col_btn1:
-    validar = st.button("Buscar e validar", type="primary", use_container_width=True)
+    validar = st.button("Enviar", type="primary", use_container_width=True)
 
 if validar:
     api_key = secret("GROQ_API_KEY")
