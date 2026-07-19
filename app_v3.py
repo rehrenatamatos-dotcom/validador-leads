@@ -388,6 +388,7 @@ CAMPOS_FORM = ("f_chave", "f_obs")
 if st.session_state.pop("limpar_form", False):
     for k in CAMPOS_FORM:
         st.session_state.pop(k, None)
+    st.session_state.pop("resultado", None)
 
 col_a, col_c, col_d = st.columns([1.2, 1, 1])
 with col_a:
@@ -516,6 +517,7 @@ if validar:
 
     # 6. Classificação com re-tentativas
     classificacoes = {}
+    erros_ia = []
 
     def processar(lista, tamanho_lote, rotulo):
         total_lotes = (len(lista) + tamanho_lote - 1) // tamanho_lote
@@ -524,7 +526,8 @@ if validar:
             lote = lista[n * tamanho_lote:(n + 1) * tamanho_lote]
             try:
                 resultado = chamar_groq(api_key, perfil, lote)
-            except Exception:
+            except Exception as e:
+                erros_ia.append(f"{type(e).__name__}: {e}")
                 resultado = []
             for item in resultado:
                 status = str(item.get("status", "")).strip()
@@ -563,25 +566,22 @@ if validar:
         w.writerow(r + [c["status"], c["motivo"]])
 
     total = len(registros)
-    st.success(f"Validação concluída — {total} leads processados!")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Dentro do foco", f"{contagem['Dentro do foco']/total:.0%}", f"{contagem['Dentro do foco']} leads", delta_color="off")
-    c2.metric("Fora do foco", f"{contagem['Fora do foco']/total:.0%}", f"{contagem['Fora do foco']} leads", delta_color="off")
-    c3.metric("Aberto", f"{contagem['Aberto']/total:.0%}", f"{contagem['Aberto']} leads", delta_color="off")
-    if falhas:
-        st.warning(f"{falhas} lead(s) sem resposta da IA (marcados como Aberto) — rode de novo para reprocessar.")
-
     periodo_txt = f"{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}"
     base_nome = f"{nome_empresa} - {data_inicio.isoformat()} a {data_fim.isoformat()}"
+    dash_html = gerar_dashboard_html(nome_empresa, chave_unica.strip(), periodo_txt, total, contagem)
 
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        st.download_button("Baixar CSV validado", data=saida.getvalue().encode("utf-8-sig"),
-                           file_name=f"{base_nome} - Validado.csv", mime="text/csv", use_container_width=True)
-    with col_dl2:
-        dash_html = gerar_dashboard_html(nome_empresa, chave_unica.strip(), periodo_txt, total, contagem)
-        st.download_button("Baixar dashboard (HTML)", data=dash_html.encode("utf-8"),
-                           file_name=f"{base_nome} - Dashboard.html", mime="text/html", use_container_width=True)
+    # Resultado fica guardado na sessão: os downloads não somem ao clicar
+    st.session_state["resultado"] = {
+        "empresa": nome_empresa,
+        "total": total,
+        "contagem": contagem,
+        "falhas": falhas,
+        "erro_ia": erros_ia[-1] if erros_ia else "",
+        "csv_bytes": saida.getvalue().encode("utf-8-sig"),
+        "csv_nome": f"{base_nome} - Validado.csv",
+        "dash_bytes": dash_html.encode("utf-8"),
+        "dash_nome": f"{base_nome} - Dashboard.html",
+    }
 
     salvar_no_historico({
         "Data da solicitação": datetime.now().strftime("%d/%m/%Y %H:%M"),
@@ -594,10 +594,63 @@ if validar:
         "Aberto": contagem["Aberto"],
     })
 
+res = st.session_state.get("resultado")
+if res:
+    total, contagem = res["total"], res["contagem"]
+    st.success(f"Validação concluída — {total} leads processados! ({res['empresa']})")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Dentro do foco", f"{contagem['Dentro do foco']/total:.0%}", f"{contagem['Dentro do foco']} leads", delta_color="off")
+    c2.metric("Fora do foco", f"{contagem['Fora do foco']/total:.0%}", f"{contagem['Fora do foco']} leads", delta_color="off")
+    c3.metric("Aberto", f"{contagem['Aberto']/total:.0%}", f"{contagem['Aberto']} leads", delta_color="off")
+    if res["falhas"]:
+        st.warning(f"{res['falhas']} lead(s) sem resposta da IA (marcados como Aberto) — rode de novo para reprocessar.")
+        if res["erro_ia"]:
+            st.error(f"Motivo técnico da falha na IA: {res['erro_ia'][:400]}")
+
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        st.download_button("Baixar CSV validado", data=res["csv_bytes"],
+                           file_name=res["csv_nome"], mime="text/csv",
+                           use_container_width=True, key="dl_csv")
+    with col_dl2:
+        st.download_button("Baixar dashboard (HTML)", data=res["dash_bytes"],
+                           file_name=res["dash_nome"], mime="text/html",
+                           use_container_width=True, key="dl_dash")
+
 st.markdown("<p style='font-weight:600; margin-top:32px;'>Histórico de validações</p>", unsafe_allow_html=True)
 historico = carregar_historico()
 if historico:
-    st.dataframe(historico, use_container_width=True, hide_index=True)
+    linhas_html = ""
+    for h in historico[:15]:
+        linhas_html += (
+            "<tr>"
+            f"<td>{h.get('Data da solicitação', '')}</td>"
+            f"<td>{h.get('Empresa', '')}</td>"
+            f"<td>{h.get('Chave única', '')}</td>"
+            f"<td>{h.get('Período', '')}</td>"
+            f"<td style='text-align:center;'>{h.get('Leads', '')}</td>"
+            f"<td style='text-align:center; color:#9FE1A5;'>{h.get('Dentro do foco', '')}</td>"
+            f"<td style='text-align:center; color:#F5A9A9;'>{h.get('Fora do foco', '')}</td>"
+            f"<td style='text-align:center; color:#FAD98F;'>{h.get('Aberto', '')}</td>"
+            "</tr>"
+        )
+    st.markdown(f"""
+<style>
+  .tab-hist {{ width: 100%; border-collapse: collapse; font-size: 0.8rem;
+    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 12px; overflow: hidden; }}
+  .tab-hist th {{ background: rgba(255,255,255,0.18); color: #ffffff; padding: 8px 10px;
+    text-align: left; font-weight: 600; }}
+  .tab-hist td {{ color: #EAF3FC; padding: 7px 10px;
+    border-top: 1px solid rgba(255,255,255,0.15); }}
+</style>
+<table class="tab-hist">
+  <tr><th>Data</th><th>Empresa</th><th>Chave</th><th>Período</th>
+      <th style="text-align:center;">Leads</th><th style="text-align:center;">Dentro</th>
+      <th style="text-align:center;">Fora</th><th style="text-align:center;">Aberto</th></tr>
+  {linhas_html}
+</table>
+""", unsafe_allow_html=True)
 else:
     st.caption("Nenhuma validação registrada ainda. As próximas aparecerão aqui com data, empresa e resultado.")
 
