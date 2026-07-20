@@ -333,6 +333,12 @@ def chamar_groq(api_key, perfil, lote):
                     espera = float(r.headers.get("retry-after", 0))
                 except (TypeError, ValueError):
                     espera = 0
+                if espera > 300:
+                    raise RuntimeError(
+                        f"Cota diária da IA esgotada — o Groq pediu {espera/3600:.1f}h de espera. "
+                        "Renova às 21h (horário de Brasília), ou troque a GROQ_API_KEY nos Secrets "
+                        "por uma chave de outra conta para continuar agora."
+                    )
                 time.sleep(min(60, espera + 1) if espera else min(30, 5 * tentativa))
                 continue
             r.raise_for_status()
@@ -344,6 +350,8 @@ def chamar_groq(api_key, perfil, lote):
                 if isinstance(v, list):
                     return v
             raise ValueError("Resposta sem lista de resultados.")
+        except RuntimeError:
+            raise                      # cota diária esgotada: não adianta re-tentar
         except Exception as e:
             ultima = e
             time.sleep(2)
@@ -557,6 +565,10 @@ if validar:
             lote = lista[n * tamanho_lote:(n + 1) * tamanho_lote]
             try:
                 resultado = chamar_groq(api_key, perfil, lote)
+            except RuntimeError as e:
+                progresso.empty()
+                st.error(str(e))       # cota diária esgotada: para tudo na hora
+                st.stop()
             except Exception as e:
                 erros_ia.append(f"{type(e).__name__}: {e}")
                 resultado = []
@@ -652,6 +664,18 @@ if res:
                            file_name=res["dash_nome"], mime="text/html",
                            use_container_width=True, key="dl_dash")
 
+@st.dialog("Excluir pesquisa")
+def dialogo_excluir(rid, rotulo):
+    st.write(f"Tem certeza que deseja excluir a pesquisa **{rotulo}**?")
+    st.caption("O registro e os arquivos (CSV e dashboard) dela serão apagados. Essa ação não tem volta.")
+    cd1, cd2 = st.columns(2)
+    if cd1.button("Sim, excluir", type="primary", use_container_width=True, key=f"conf_{rid}"):
+        excluir_do_historico(rid)
+        st.rerun()
+    if cd2.button("Cancelar", use_container_width=True, key=f"canc_{rid}"):
+        st.rerun()
+
+
 st.markdown("<p style='font-weight:600; margin-top:32px;'>Histórico de validações</p>", unsafe_allow_html=True)
 historico = carregar_historico()
 if historico:
@@ -665,40 +689,29 @@ if historico:
         historico = [h for h in historico if alvo in str(h.get("Chave única", "")).lower()]
         if not historico:
             st.caption("Nenhuma validação encontrada para essa chave.")
-    linhas_html = ""
+    cab = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
+    for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "")):
+        col.markdown(f"<span style='font-size:0.72rem; color:#B5D4F4; font-weight:600;'>{titulo}</span>", unsafe_allow_html=True)
+
     for h in historico[:15]:
-        linhas_html += (
-            "<tr>"
-            f"<td>{h.get('Data da solicitação', '')}</td>"
-            f"<td>{h.get('Empresa', '')}</td>"
-            f"<td>{h.get('Chave única', '')}</td>"
-            f"<td>{h.get('Período', '')}</td>"
-            f"<td style='text-align:center;'>{h.get('Leads', '')}</td>"
-            f"<td style='text-align:center; color:#9FE1A5;'>{h.get('Dentro do foco', '')}</td>"
-            f"<td style='text-align:center; color:#F5A9A9;'>{h.get('Fora do foco', '')}</td>"
-            f"<td style='text-align:center; color:#FAD98F;'>{h.get('Aberto', '')}</td>"
-            "</tr>"
+        rid = h.get("id", "")
+        c = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
+        c[0].markdown(f"<span style='font-size:0.78rem;'>{h.get('Data da solicitação', '')}</span>", unsafe_allow_html=True)
+        c[1].markdown(f"<span style='font-size:0.78rem;'>{h.get('Empresa', '')}</span>", unsafe_allow_html=True)
+        c[2].markdown(f"<span style='font-size:0.78rem;'>{h.get('Chave única', '')}</span>", unsafe_allow_html=True)
+        c[3].markdown(f"<span style='font-size:0.78rem;'>{h.get('Período', '')}</span>", unsafe_allow_html=True)
+        c[4].markdown(
+            f"<span style='font-size:0.78rem;'>{h.get('Leads', '')} "
+            f"(<span style='color:#9FE1A5;'>{h.get('Dentro do foco', '')}</span>/"
+            f"<span style='color:#F5A9A9;'>{h.get('Fora do foco', '')}</span>/"
+            f"<span style='color:#FAD98F;'>{h.get('Aberto', '')}</span>)</span>",
+            unsafe_allow_html=True,
         )
-    st.markdown(f"""
-<style>
-  .tab-hist {{ width: 100%; border-collapse: collapse; font-size: 0.8rem;
-    background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.28);
-    border-radius: 12px; overflow: hidden; }}
-  .tab-hist th {{ background: rgba(255,255,255,0.18); color: #ffffff; padding: 8px 10px;
-    text-align: left; font-weight: 600; }}
-  .tab-hist td {{ color: #EAF3FC; padding: 7px 10px;
-    border-top: 1px solid rgba(255,255,255,0.15); }}
-</style>
-<table class="tab-hist">
-  <tr><th>Data</th><th>Empresa</th><th>Chave</th><th>Período</th>
-      <th style="text-align:center;">Leads</th><th style="text-align:center;">Dentro</th>
-      <th style="text-align:center;">Fora</th><th style="text-align:center;">Aberto</th></tr>
-  {linhas_html}
-</table>
-""", unsafe_allow_html=True)
+        if rid and c[5].button("✕", key=f"x_{rid}", help="Excluir esta pesquisa"):
+            dialogo_excluir(rid, f"{h.get('Empresa', '')} · {h.get('Data da solicitação', '')}")
     com_id = [h for h in historico if h.get("id")]
     if com_id:
-        st.markdown("<p style='font-weight:600; margin-top:16px;'>Gerenciar uma validação</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-weight:600; margin-top:16px;'>Baixar arquivos de uma validação</p>", unsafe_allow_html=True)
         rotulos = {
             f"{h['Data da solicitação']} · {h.get('Empresa', '?')} · {h.get('Leads', '?')} leads": h
             for h in com_id[:15]
@@ -708,7 +721,7 @@ if historico:
         rid = sel["id"]
         csv_salvo = ler_resultado_salvo(rid, ".csv")
         dash_salvo = ler_resultado_salvo(rid, ".html")
-        cg1, cg2, cg3 = st.columns(3)
+        cg1, cg2 = st.columns(2)
         with cg1:
             if csv_salvo:
                 st.download_button("Baixar CSV", data=csv_salvo,
@@ -723,10 +736,6 @@ if historico:
                                    mime="text/html", use_container_width=True, key=f"hdash_{rid}")
             else:
                 st.caption("Dashboard não disponível (app reiniciou)")
-        with cg3:
-            if st.button("Excluir esta validação", use_container_width=True, key=f"hdel_{rid}"):
-                excluir_do_historico(rid)
-                st.rerun()
 else:
     st.caption("Nenhuma validação registrada ainda. As próximas aparecerão aqui com data, empresa e resultado.")
 
