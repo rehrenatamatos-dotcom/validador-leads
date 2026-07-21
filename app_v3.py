@@ -1,6 +1,7 @@
 # Validador de Leads v3 — Soluções Industriais
 # v2 (busca automática no Metabase) + dashboard HTML de resultados para download.
 
+import base64
 import csv
 import io
 import json
@@ -263,104 +264,112 @@ MODELO_DASH = """<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif; color: #EAF3FC; padding: 24px; min-height: 100vh;
-    background:
-      linear-gradient(rgba(12, 68, 124, 0.86), rgba(10, 58, 107, 0.90)),
-      url('https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1600&q=60') center / cover fixed no-repeat;
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #10161F; padding: 24px; }
+  .tela { max-width: 1180px; margin: 0 auto; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(0,0,0,0.6); background: #0C1D30; }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .nav .logo { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 14px; }
+  .nav .logo .quad { width: 26px; height: 26px; border-radius: 7px; background: #185FA5; display: flex; align-items: center; justify-content: center; font-size: 11px; }
+  .nav .dir { display: flex; align-items: center; gap: 14px; }
+  .nav .quem { color: #EAF3FC; font-size: 13.5px; }
+  .nav .quem b { color: #fff; }
+  .nav .baixar { font-size: 12px; color: #0C447C; background: #fff; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; }
+  .hero {
+    padding: 24px 36px 20px;
+    background: linear-gradient(160deg, rgba(6,20,36,0.62), rgba(12,68,124,0.5)),
+      url('https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1900&q=70') center/cover no-repeat;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
   }
-  .wrap { max-width: 900px; margin: 0 auto; }
-  .vidro {
-    background: rgba(255, 255, 255, 0.13);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.32);
-    border-radius: 16px;
-  }
-  .topo { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-  .topo h1 { color: #fff; font-size: 20px; font-weight: 600; }
-  .topo p { color: #B5D4F4; font-size: 13px; margin-top: 4px; }
-  .topo .marca { color: #B5D4F4; font-size: 12px; text-align: right; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 14px 0; }
-  .card { padding: 16px; text-align: center; }
-  .card .rotulo { font-size: 12px; color: #B5D4F4; margin-bottom: 4px; }
-  .card .valor { font-size: 30px; font-weight: 600; }
-  .card .sub { font-size: 12px; color: rgba(234,243,252,0.7); margin-top: 2px; }
-  .azul { color: #ffffff; } .verde { color: #9FE1A5; } .vermelho { color: #F5A9A9; } .ambar { color: #FAD98F; }
-  .paineis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .painel { padding: 18px; }
-  .painel h2 { font-size: 14px; color: #ffffff; margin-bottom: 12px; }
-  .painel h2 .pin { font-size: 11px; padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; }
-  .pin-verde { background: rgba(159,225,165,0.25); color: #C6EFCE; }
-  .pin-verm { background: rgba(245,169,169,0.25); color: #F5A9A9; }
-  .tab-leads { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .tab-leads th { text-align: left; color: #B5D4F4; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.2); }
-  .tab-leads td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #EAF3FC; }
-  .anuncio-linha { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+  .hero h1 { color: #fff; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .hero p { color: #D9EAFB; font-size: 12.5px; }
+  .selo { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32); color: #fff; font-size: 12.5px; padding: 7px 16px; border-radius: 30px; }
+  .selo b { font-size: 14px; }
+  .corpo { padding: 24px 36px 30px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpi { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 16px 18px; }
+  .kpi .lbl { font-size: 11px; color: #AFCBE8; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .kpi .num { font-size: 24px; font-weight: 700; color: #fff; }
+  .kpi .num.v { color: #4FD1A5; } .kpi .num.r { color: #F0997B; } .kpi .num.a { color: #FAC775; }
+  .kpi .sub { font-size: 11px; color: #7C93AC; margin-top: 4px; }
+  .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .painel { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 20px 22px; }
+  .painel h2 { color: #fff; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
+  .painel h2 .pin { font-size: 11px; padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; font-weight: 600; }
+  .pin-verde { background: rgba(79,209,165,0.18); color: #4FD1A5; }
+  .pin-verm { background: rgba(240,153,123,0.18); color: #F0997B; }
+  .grafico { height: 210px; position: relative; }
+  .lista-lead { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 12.5px; gap: 10px; }
+  .lista-lead:last-child { border-bottom: none; }
+  .lista-lead .nome { color: #EAF3FC; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .pin-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .pin-dot-verde { background: #4FD1A5; } .pin-dot-verm { background: #F0997B; }
+  .lista-lead .email { color: #7C93AC; font-size: 11.5px; text-align: right; }
+  .vazio { color: rgba(234,243,252,0.55); font-size: 12px; }
+  .anuncio-linha { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; }
   .anuncio-linha .nome { width: 150px; color: #EAF3FC; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .barra-fundo { flex: 1; height: 8px; background: rgba(255,255,255,0.12); border-radius: 5px; overflow: hidden; }
-  .barra-cheia { height: 100%; background: #F5A9A9; border-radius: 5px; }
-  .anuncio-linha .qtd { width: 22px; text-align: right; color: #B5D4F4; }
-  .rodape { text-align: center; color: rgba(234,243,252,0.6); font-size: 11px; margin-top: 18px; }
-  @media (max-width: 700px) { .paineis { grid-template-columns: 1fr; } }
+  .barra-cheia { height: 100%; background: #F0997B; border-radius: 5px; }
+  .anuncio-linha .qtd { width: 22px; text-align: right; color: #AFCBE8; }
+  .rodape { text-align: center; color: rgba(234,243,252,0.5); font-size: 11px; padding: 18px 0 0; }
+  @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } .linha { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topo vidro">
+<div class="tela">
+  <div class="nav">
+    <div class="logo"><span class="quad">SI</span> Validador de Leads</div>
+    <div class="dir">
+      <div class="quem">Gerado por <b>__ANALISTA__</b></div>
+      __BOTAO_EXCEL__
+    </div>
+  </div>
+  <div class="hero">
     <div>
-      <h1>Relatório de Validação de Leads</h1>
-      <p>__EMPRESA__ &nbsp;·&nbsp; chave __CHAVE__ &nbsp;·&nbsp; __PERIODO__</p>
+      <h1>__EMPRESA__</h1>
+      <p>chave __CHAVE__ &nbsp;·&nbsp; __PERIODO__ &nbsp;·&nbsp; gerado em __GERADO__</p>
     </div>
-    <div class="marca">Soluções Industriais<br>gerado em __GERADO__</div>
+    <div class="selo"><b>__TOTAL__</b> leads analisados</div>
   </div>
 
-  <div class="cards">
-    <div class="card vidro"><div class="rotulo">Total de leads</div><div class="valor azul">__TOTAL__</div><div class="sub">no período</div></div>
-    <div class="card vidro"><div class="rotulo">Dentro do foco</div><div class="valor verde">__PCT_DENTRO__%</div><div class="sub">__N_DENTRO__ leads</div></div>
-    <div class="card vidro"><div class="rotulo">Fora do foco</div><div class="valor vermelho">__PCT_FORA__%</div><div class="sub">__N_FORA__ leads</div></div>
-    <div class="card vidro"><div class="rotulo">Aberto</div><div class="valor ambar">__PCT_ABERTO__%</div><div class="sub">__N_ABERTO__ leads</div></div>
-  </div>
-
-  <div class="paineis">
-    <div class="painel vidro">
-      <h2>Distribuição por status</h2>
-      <canvas id="rosca" height="220"></canvas>
+  <div class="corpo">
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Total de leads</div><div class="num">__TOTAL__</div><div class="sub">no período</div></div>
+      <div class="kpi"><div class="lbl">Dentro do foco</div><div class="num v">__PCT_DENTRO__%</div><div class="sub">__N_DENTRO__ leads</div></div>
+      <div class="kpi"><div class="lbl">Fora do foco</div><div class="num r">__PCT_FORA__%</div><div class="sub">__N_FORA__ leads</div></div>
+      <div class="kpi"><div class="lbl">Aberto</div><div class="num a">__PCT_ABERTO__%</div><div class="sub">__N_ABERTO__ leads</div></div>
     </div>
-    <div class="painel vidro">
-      <h2>Anúncios que mais geraram leads fora do foco</h2>
-      __LINHAS_ANUNCIOS__
-    </div>
-  </div>
 
-  <div class="paineis" style="margin-top:12px;">
-    <div class="painel vidro">
-      <h2>Melhores leads <span class="pin pin-verde">dentro do foco</span></h2>
-      <table class="tab-leads">
-        <tr><th>ID</th><th>Nome</th><th>E-mail</th></tr>
+    <div class="linha">
+      <div class="painel">
+        <h2>Distribuição por status</h2>
+        <div class="grafico"><canvas id="rosca"></canvas></div>
+      </div>
+      <div class="painel">
+        <h2>Anúncios que mais geraram leads fora do foco</h2>
+        __LINHAS_ANUNCIOS__
+      </div>
+    </div>
+
+    <div class="linha">
+      <div class="painel">
+        <h2>Melhores leads <span class="pin pin-verde">dentro do foco</span></h2>
         __LINHAS_MELHORES__
-      </table>
-    </div>
-    <div class="painel vidro">
-      <h2>Piores leads <span class="pin pin-verm">fora do foco</span></h2>
-      <table class="tab-leads">
-        <tr><th>ID</th><th>Nome</th><th>E-mail</th></tr>
+      </div>
+      <div class="painel">
+        <h2>Piores leads <span class="pin pin-verm">fora do foco</span></h2>
         __LINHAS_PIORES__
-      </table>
+      </div>
     </div>
   </div>
-
-  <p class="rodape">Validador de Leads · Soluções Industriais · uso interno</p>
 </div>
+<p class="rodape">Validador de Leads · Soluções Industriais · uso interno</p>
 <script>
-const CORES = ["#639922", "#E24B4A", "#EF9F27"];
-const ROTULOS = ["Dentro do foco", "Fora do foco", "Aberto"];
-const DADOS = [__N_DENTRO__, __N_FORA__, __N_ABERTO__];
-const CLARO = "#EAF3FC";
 new Chart(document.getElementById("rosca"), {
   type: "doughnut",
-  data: { labels: ROTULOS, datasets: [{ data: DADOS, backgroundColor: CORES, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" }] },
-  options: { plugins: { legend: { position: "bottom", labels: { color: CLARO } } }, cutout: "58%" }
+  data: {
+    labels: ["Dentro do foco", "Fora do foco", "Aberto"],
+    datasets: [{ data: [__N_DENTRO__, __N_FORA__, __N_ABERTO__], backgroundColor: ["#4FD1A5", "#F0997B", "#FAC775"], borderWidth: 0 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: "#EAF3FC", font: { size: 12 } } } } }
 });
 </script>
 </body>
@@ -398,22 +407,24 @@ def gerar_xlsx(cabecalho, registros, leads, classificacoes):
 
 
 def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
-                         melhores=None, piores=None, anuncios_ruins=None):
+                         melhores=None, piores=None, anuncios_ruins=None,
+                         analista="", xlsx_bytes=None, xlsx_nome="leads.xlsx"):
     def pct(n):
         return str(round(100 * n / total)) if total else "0"
 
-    def linhas_leads(lista):
+    def linhas_leads(lista, cor):
         if not lista:
-            return "<tr><td colspan='3' style='color:rgba(234,243,252,0.6);'>Nenhum lead nesta categoria.</td></tr>"
+            return "<p class='vazio'>Nenhum lead nesta categoria.</p>"
         out = ""
         for ld in lista:
-            out += (f"<tr><td>{ld['id']}</td><td>{ld['nome']}</td>"
-                    f"<td style='font-size:11px;'>{ld['email']}</td></tr>")
+            out += (f"<div class='lista-lead'><div class='nome'>"
+                    f"<span class='pin-dot pin-dot-{cor}'></span>#{ld['id']} · {ld['nome']}</div>"
+                    f"<div class='email'>{ld['email']}</div></div>")
         return out
 
     def linhas_anuncios(lista):
         if not lista:
-            return "<p style='color:rgba(234,243,252,0.6); font-size:12px;'>Sem dados de anúncio.</p>"
+            return "<p class='vazio'>Sem dados de anúncio.</p>"
         maior = max(qtd for _, qtd in lista) or 1
         out = ""
         for nome, qtd in lista:
@@ -423,11 +434,22 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
                     f"<div class='qtd'>{qtd}</div></div>")
         return out
 
+    def botao_excel():
+        if not xlsx_bytes:
+            return ""
+        b64 = base64.b64encode(xlsx_bytes).decode()
+        return (
+            f'<a class="baixar" download="{xlsx_nome}" '
+            f'href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}">'
+            f'Baixar Excel</a>'
+        )
+
     html = MODELO_DASH
     trocas = {
         "__EMPRESA__": empresa,
         "__CHAVE__": chave,
         "__PERIODO__": periodo,
+        "__ANALISTA__": analista or "equipe",
         "__GERADO__": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "__TOTAL__": str(total),
         "__PCT_DENTRO__": pct(contagem["Dentro do foco"]),
@@ -436,9 +458,10 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
         "__N_DENTRO__": str(contagem["Dentro do foco"]),
         "__N_FORA__": str(contagem["Fora do foco"]),
         "__N_ABERTO__": str(contagem["Aberto"]),
-        "__LINHAS_MELHORES__": linhas_leads(melhores),
-        "__LINHAS_PIORES__": linhas_leads(piores),
+        "__LINHAS_MELHORES__": linhas_leads(melhores, "verde"),
+        "__LINHAS_PIORES__": linhas_leads(piores, "verm"),
         "__LINHAS_ANUNCIOS__": linhas_anuncios(anuncios_ruins),
+        "__BOTAO_EXCEL__": botao_excel(),
     }
     for k, v in trocas.items():
         html = html.replace(k, v)
@@ -575,27 +598,29 @@ if not nome_analista:
     <style>
       html, body, [data-testid="stAppViewContainer"] {{ background: #0B1622; }}
       [data-testid="stHeader"] {{ background: transparent; }}
-      .block-container {{ max-width: 480px; padding-top: 8vh; }}
+      .block-container {{ max-width: 620px; padding-top: 6vh; }}
       .boasvindas {{
         background: linear-gradient(160deg, rgba(6,20,36,0.80), rgba(12,68,124,0.72)),
           url('{FOTO_INDUSTRIA}') center/cover no-repeat;
-        border-radius: 22px; padding: 44px 40px 34px; text-align: center;
+        border-radius: 26px; padding: 64px 56px 52px; text-align: center; min-height: 260px;
       }}
       .selo-glass {{ display: inline-block; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3);
-        color: #EAF3FC; font-size: 11.5px; padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }}
-      .boasvindas h1 {{ color: #fff; font-size: 21px; font-weight: 700; margin-bottom: 8px; }}
-      .boasvindas p {{ color: #D9EAFB; font-size: 13px; margin-bottom: 4px; line-height: 1.55; }}
-      div[data-baseweb="input"] {{
+        color: #EAF3FC; font-size: 13px; padding: 6px 18px; border-radius: 20px; margin-bottom: 22px; }}
+      .boasvindas h1 {{ color: #fff; font-size: clamp(26px, 4vw, 32px); font-weight: 700; margin-bottom: 12px; line-height: 1.2; }}
+      .boasvindas p {{ color: #D9EAFB; font-size: 16px; margin-bottom: 4px; line-height: 1.6; }}
+      .block-container [data-testid="stWidgetLabel"] {{ display: none; }}
+      div[data-testid="stTextInput"] div, div[data-baseweb="input"] {{
         background: rgba(255,255,255,0.14) !important; border: 1px solid rgba(255,255,255,0.38) !important;
-        border-radius: 12px !important;
+        border-radius: 14px !important;
       }}
-      div[data-baseweb="input"] input {{
+      div[data-testid="stTextInput"] input {{
         background: transparent !important; color: #ffffff !important; text-align: center;
+        font-size: 17px !important; padding: 14px 16px !important; height: auto !important;
       }}
-      div[data-baseweb="input"] input::placeholder {{ color: rgba(255,255,255,0.55) !important; }}
+      div[data-testid="stTextInput"] input::placeholder {{ color: rgba(255,255,255,0.55) !important; }}
       .stButton > button {{
         background: rgba(255,255,255,0.94) !important; color: {AZUL_ESCURO} !important; border: none !important;
-        border-radius: 12px !important; font-weight: 700 !important;
+        border-radius: 14px !important; font-weight: 700 !important; font-size: 16px !important; padding: 14px !important;
       }}
     </style>
     <div class="boasvindas">
@@ -603,6 +628,7 @@ if not nome_analista:
       <h1>Bem-vindo(a) ao Validador de Leads</h1>
       <p>Antes de começar, como você se chama?</p>
     </div>
+    <div style="height:22px;"></div>
     """, unsafe_allow_html=True)
     nome_digitado = st.text_input(
         "Seu nome", key="f_nome_boas", label_visibility="collapsed", placeholder="Digite seu nome",
@@ -665,21 +691,42 @@ st.markdown(f"""
     backdrop-filter: blur(16px);
   }}
 
-  /* Campos em vidro — no baseweb (biblioteca por baixo do Streamlit), o "quadrado"
-     visível com fundo e borda é o div[data-baseweb=...], não o input/textarea em si. */
-  div[data-baseweb="input"], div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
-    background: rgba(255,255,255,0.10) !important; border: 1px solid rgba(255,255,255,0.26) !important;
+  /* Campos em vidro — cobrimos tanto o div[data-baseweb=...] (usado por alguns
+     campos) quanto o wrapper direto do Streamlit (usado por outros), senão parte
+     dos campos fica branca. Pinta todo mundo por dentro e deixa só uma borda fora. */
+  div[data-testid="stTextInput"], div[data-testid="stTextArea"],
+  div[data-testid="stDateInput"] > div, div[data-testid="stSelectbox"] > div {{
+    border: 1px solid rgba(255,255,255,0.26) !important;
     border-radius: 12px !important;
+    overflow: hidden;
   }}
-  div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea,
-  div[data-baseweb="select"] div, div[data-baseweb="select"] span {{
+  div[data-testid="stTextInput"] div, div[data-testid="stTextArea"] div,
+  div[data-testid="stDateInput"] div, div[data-testid="stSelectbox"] div,
+  div[data-baseweb="input"], div[data-baseweb="base-input"],
+  div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
+    background: rgba(255,255,255,0.10) !important;
+  }}
+  div[data-testid="stTextInput"] input, div[data-testid="stTextArea"] textarea,
+  div[data-testid="stDateInput"] input, div[data-testid="stSelectbox"] *,
+  div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {{
     background: transparent !important; color: #ffffff !important;
   }}
-  div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {{
+  div[data-testid="stTextInput"] input::placeholder,
+  div[data-testid="stTextArea"] textarea::placeholder {{
     color: rgba(255,255,255,0.45) !important;
   }}
+  div[data-testid="stTextInput"]:focus-within, div[data-testid="stTextArea"]:focus-within,
   div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
     border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
+  }}
+  /* Ícone de ajuda (?) — some no tema escuro se não forçarmos a cor */
+  [data-testid="stTooltipIcon"], [data-testid="stTooltipIcon"] svg,
+  [data-testid="stTooltipHoverTarget"] svg {{
+    color: #EAF3FC !important; fill: #EAF3FC !important; opacity: 1 !important;
+  }}
+  div[data-testid="stTooltipContent"] {{
+    background: {AZUL_ESCURO} !important; color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.18) !important; border-radius: 10px !important;
   }}
   /* Menus flutuantes (opções do selectbox e o calendário do date_input) — no baseweb
      essas caixas têm fundo branco embutido em vários níveis, então zeramos tudo por
@@ -1035,7 +1082,9 @@ if validar:
     periodo_txt = f"{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}"
     base_nome = f"{nome_empresa} - {data_inicio.isoformat()} a {data_fim.isoformat()}"
     dash_html = gerar_dashboard_html(nome_empresa, chave_unica.strip(), periodo_txt, total, contagem,
-                                     melhores=melhores, piores=piores, anuncios_ruins=anuncios_ruins)
+                                     melhores=melhores, piores=piores, anuncios_ruins=anuncios_ruins,
+                                     analista=st.session_state.get("nome_analista", ""),
+                                     xlsx_bytes=xlsx_bytes, xlsx_nome=f"{base_nome} - Validado.xlsx")
 
     # Resultado fica guardado na sessão: os downloads não somem ao clicar
     st.session_state["resultado"] = {
