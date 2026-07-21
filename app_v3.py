@@ -23,28 +23,33 @@ FILL_CABECALHO = PatternFill("solid", fgColor="0C447C")  # azul escuro
 # Provedores gratuitos (APIs compatíveis com OpenAI). O app escolhe automaticamente:
 # se houver CEREBRAS_API_KEY nos Secrets usa Cerebras (cota diária bem maior);
 # senão usa Groq. Um serve de reserva do outro quando ambas as chaves existem.
+# Cada provedor tem uma LISTA de modelos candidatos. Se um estiver descontinuado
+# (404), o app tenta o próximo automaticamente — nunca quebra por um nome só.
+# Modelos confirmados ATIVOS (consultados na doc oficial de cada provedor, jul/2026).
+# Cada provedor tem uma lista de candidatos: se um cair (404), tenta o próximo.
 PROVEDORES = {
     "cerebras": {
         "url": "https://api.cerebras.ai/v1/chat/completions",
-        "modelo": "llama-3.3-70b",
         "chave": "CEREBRAS_API_KEY",
+        "modelos": ["llama-3.3-70b", "llama3.1-8b", "gpt-oss-120b"],
     },
     "groq": {
         "url": "https://api.groq.com/openai/v1/chat/completions",
-        "modelo": "meta-llama/llama-4-scout-17b-16e-instruct",   # modelo válido (não descontinuado)
         "chave": "GROQ_API_KEY",
+        "modelos": ["openai/gpt-oss-20b", "llama-3.1-8b-instant",
+                    "llama-3.3-70b-versatile", "openai/gpt-oss-120b"],
     },
 }
 
-# Opções do seletor de IA na tela. Cada opção fixa um provedor + modelo.
-# "Automático" usa o provedor com chave configurada (Cerebras primeiro) no modelo padrão.
+# Opções do seletor de IA na tela. Cada opção define (provedor, modelo preferido).
+# Todos os modelos abaixo foram confirmados ativos na documentação oficial.
 # Cerebras tem cota diária muito maior (1M tokens/dia) — melhor para uso intenso.
 MODELOS_ESCOLHA = {
     "Automático (recomendado)": None,
     "Rápido · Cerebras Llama 3.1 8B": ("cerebras", "llama3.1-8b"),
     "Rápido · Groq GPT-OSS 20B": ("groq", "openai/gpt-oss-20b"),
     "Equilíbrio · Cerebras Llama 3.3 70B": ("cerebras", "llama-3.3-70b"),
-    "Equilíbrio · Groq Llama 4 Scout": ("groq", "meta-llama/llama-4-scout-17b-16e-instruct"),
+    "Equilíbrio · Groq Llama 3.3 70B": ("groq", "llama-3.3-70b-versatile"),
     "Preciso · Groq GPT-OSS 120B": ("groq", "openai/gpt-oss-120b"),
 }
 
@@ -455,9 +460,55 @@ def provedores_ativos():
     return [n for n in ("cerebras", "groq") if secret(PROVEDORES[n]["chave"])]
 
 
+def _extrair_lista(parsed):
+    if isinstance(parsed, list):
+        return parsed
+    for v in parsed.values():
+        if isinstance(v, list):
+            return v
+    raise ValueError("Resposta sem lista de resultados.")
+
+
+def _tentar_modelo(url, api_key, modelo, conteudo_user):
+    """Uma chamada a um modelo específico. Retorna (lista, None) em sucesso,
+    ('404', None) se o modelo não existe, ('cota', horas) se a cota diária estourou,
+    (None, excecao) em outros erros."""
+    corpo = {
+        "model": modelo,
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": PROMPT_SISTEMA},
+            {"role": "user", "content": conteudo_user},
+        ],
+    }
+    ultima = None
+    for tentativa in range(1, MAX_TENTATIVAS + 1):
+        try:
+            r = requests.post(url, json=corpo, headers={"Authorization": f"Bearer {api_key}"}, timeout=120)
+            if r.status_code in (400, 404):
+                return "404", None                      # modelo indisponível: tenta o próximo
+            if r.status_code == 429 or r.status_code >= 500:
+                try:
+                    espera = float(r.headers.get("retry-after", 0))
+                except (TypeError, ValueError):
+                    espera = 0
+                if espera > 300:
+                    return "cota", espera
+                time.sleep(min(60, espera + 1) if espera else min(30, 5 * tentativa))
+                continue
+            r.raise_for_status()
+            texto = r.json()["choices"][0]["message"]["content"]
+            return _extrair_lista(json.loads(texto)), None
+        except Exception as e:
+            ultima = e
+            time.sleep(2)
+    return None, ultima
+
+
 def chamar_ia(perfil, lote, ordem, modelo_forcado=None):
-    """Tenta os provedores da lista em ordem; troca de provedor se a cota diária estourar.
-    `ordem` é uma lista de nomes de provedor; `modelo_forcado` opcionalmente fixa o modelo."""
+    """Tenta os provedores em ordem; dentro de cada um, tenta a lista de modelos candidatos
+    (começando pelo escolhido). Pula modelos indisponíveis (404) e troca de provedor na cota."""
     leads_texto = "\n\n".join(
         f"LEAD id={l['id']}\nMensagem: {l['mensagem']}\nContexto extra: {l['extra']}"
         for l in lote
@@ -468,50 +519,28 @@ def chamar_ia(perfil, lote, ordem, modelo_forcado=None):
     for i, nome in enumerate(ordem):
         cfg = PROVEDORES[nome]
         api_key = secret(cfg["chave"])
-        # modelo fixo vale só para o provedor escolhido (1º da lista); reservas usam o padrão deles
-        modelo = modelo_forcado if (modelo_forcado and i == 0) else cfg["modelo"]
-        corpo = {
-            "model": modelo,
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": PROMPT_SISTEMA},
-                {"role": "user", "content": conteudo_user},
-            ],
-        }
+        # ordem de modelos: o escolhido (se for deste provedor) primeiro, depois os candidatos
+        modelos = list(cfg["modelos"])
+        if modelo_forcado and i == 0 and modelo_forcado in modelos:
+            modelos.remove(modelo_forcado)
+            modelos.insert(0, modelo_forcado)
+        elif modelo_forcado and i == 0:
+            modelos.insert(0, modelo_forcado)
+
         cota_estourou = False
-        for tentativa in range(1, MAX_TENTATIVAS + 1):
-            try:
-                r = requests.post(cfg["url"], json=corpo,
-                                  headers={"Authorization": f"Bearer {api_key}"}, timeout=120)
-                if r.status_code in (400, 404) and corpo["model"] != cfg["modelo"]:
-                    corpo["model"] = cfg["modelo"]      # modelo escolhido não existe aqui: usa o padrão
-                    continue
-                if r.status_code == 429 or r.status_code >= 500:
-                    try:
-                        espera = float(r.headers.get("retry-after", 0))
-                    except (TypeError, ValueError):
-                        espera = 0
-                    if espera > 300:      # cota diária esgotada nesse provedor
-                        esgotados.append(nome)
-                        cota_estourou = True
-                        break
-                    time.sleep(min(60, espera + 1) if espera else min(30, 5 * tentativa))
-                    continue
-                r.raise_for_status()
-                texto = r.json()["choices"][0]["message"]["content"]
-                parsed = json.loads(texto)
-                if isinstance(parsed, list):
-                    return parsed
-                for v in parsed.values():
-                    if isinstance(v, list):
-                        return v
-                raise ValueError("Resposta sem lista de resultados.")
-            except Exception as e:
-                ultima = e
-                time.sleep(2)
+        for modelo in modelos:
+            resultado, err = _tentar_modelo(cfg["url"], api_key, modelo, conteudo_user)
+            if isinstance(resultado, list):
+                return resultado
+            if resultado == "404":
+                continue                                # modelo indisponível: próximo candidato
+            if resultado == "cota":
+                esgotados.append(nome)
+                cota_estourou = True
+                break
+            ultima = err                                # erro genérico: tenta próximo modelo
         if cota_estourou:
-            continue                      # tenta o próximo provedor da lista
+            continue                                    # próximo provedor
     if esgotados and len(esgotados) == len(ordem):
         raise RuntimeError(
             "Cota diária esgotada em todos os provedores de IA configurados "
@@ -520,7 +549,10 @@ def chamar_ia(perfil, lote, ordem, modelo_forcado=None):
         )
     if ultima:
         raise ultima
-    raise RuntimeError("Falha desconhecida ao chamar a IA.")
+    raise RuntimeError(
+        "Nenhum modelo respondeu nos provedores configurados. "
+        "Confira se as chaves de IA nos Secrets estão corretas e ativas."
+    )
 
 
 # ---------- Interface ----------
