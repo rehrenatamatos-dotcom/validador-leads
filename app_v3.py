@@ -296,6 +296,11 @@ MODELO_DASH = """<!DOCTYPE html>
   .tab-leads { width: 100%; border-collapse: collapse; font-size: 12px; }
   .tab-leads th { text-align: left; color: #B5D4F4; font-weight: 600; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.2); }
   .tab-leads td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #EAF3FC; }
+  .anuncio-linha { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12px; }
+  .anuncio-linha .nome { width: 150px; color: #EAF3FC; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barra-fundo { flex: 1; height: 8px; background: rgba(255,255,255,0.12); border-radius: 5px; overflow: hidden; }
+  .barra-cheia { height: 100%; background: #F5A9A9; border-radius: 5px; }
+  .anuncio-linha .qtd { width: 22px; text-align: right; color: #B5D4F4; }
   .rodape { text-align: center; color: rgba(234,243,252,0.6); font-size: 11px; margin-top: 18px; }
   @media (max-width: 700px) { .paineis { grid-template-columns: 1fr; } }
 </style>
@@ -323,8 +328,8 @@ MODELO_DASH = """<!DOCTYPE html>
       <canvas id="rosca" height="220"></canvas>
     </div>
     <div class="painel vidro">
-      <h2>Leads por status</h2>
-      <canvas id="barras" height="220"></canvas>
+      <h2>Anúncios que mais geraram leads fora do foco</h2>
+      __LINHAS_ANUNCIOS__
     </div>
   </div>
 
@@ -345,14 +350,6 @@ MODELO_DASH = """<!DOCTYPE html>
     </div>
   </div>
 
-  <div class="painel vidro" style="margin-top:12px;">
-    <h2>Anúncios de origem que mais geraram leads fora do foco</h2>
-    <table class="tab-leads">
-      <tr><th>Anúncio de origem</th><th style="text-align:center;">Leads fora do foco</th></tr>
-      __LINHAS_ANUNCIOS__
-    </table>
-  </div>
-
   <p class="rodape">Validador de Leads · Soluções Industriais · uso interno</p>
 </div>
 <script>
@@ -364,17 +361,6 @@ new Chart(document.getElementById("rosca"), {
   type: "doughnut",
   data: { labels: ROTULOS, datasets: [{ data: DADOS, backgroundColor: CORES, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" }] },
   options: { plugins: { legend: { position: "bottom", labels: { color: CLARO } } }, cutout: "58%" }
-});
-new Chart(document.getElementById("barras"), {
-  type: "bar",
-  data: { labels: ROTULOS, datasets: [{ data: DADOS, backgroundColor: CORES, borderRadius: 6 }] },
-  options: {
-    plugins: { legend: { display: false } },
-    scales: {
-      y: { beginAtZero: true, ticks: { precision: 0, color: CLARO }, grid: { color: "rgba(255,255,255,0.15)" } },
-      x: { ticks: { color: CLARO }, grid: { display: false } }
-    }
-  }
 });
 </script>
 </body>
@@ -427,10 +413,14 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
 
     def linhas_anuncios(lista):
         if not lista:
-            return "<tr><td colspan='2' style='color:rgba(234,243,252,0.6);'>Sem dados de anúncio.</td></tr>"
+            return "<p style='color:rgba(234,243,252,0.6); font-size:12px;'>Sem dados de anúncio.</p>"
+        maior = max(qtd for _, qtd in lista) or 1
         out = ""
         for nome, qtd in lista:
-            out += f"<tr><td>{nome}</td><td style='text-align:center; color:#F5A9A9;'>{qtd}</td></tr>"
+            largura = round(100 * qtd / maior)
+            out += (f"<div class='anuncio-linha'><div class='nome'>{nome}</div>"
+                    f"<div class='barra-fundo'><div class='barra-cheia' style='width:{largura}%'></div></div>"
+                    f"<div class='qtd'>{qtd}</div></div>")
         return out
 
     html = MODELO_DASH
@@ -559,68 +549,180 @@ def chamar_ia(perfil, lote, ordem, modelo_forcado=None):
 
 # ---------- Interface ----------
 
-st.set_page_config(page_title="Validador de Leads v3", page_icon="✅", layout="centered")
+st.set_page_config(page_title="Validador de Leads v3", page_icon="✅", layout="wide")
 
-IMG_FUNDO = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1600&q=60"
+FOTO_INDUSTRIA = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1900&q=70"
+
+
+def obter_nome_analista():
+    """Nome do analista: Secrets (ANALISTA_NOME, fixo e definitivo) > link salvo
+    (?analista=... na URL) > sessão atual. Cada analista tem seu próprio app, então
+    o mais simples e permanente é configurar ANALISTA_NOME nos Secrets dele."""
+    nome = secret("ANALISTA_NOME")
+    if nome:
+        return nome
+    try:
+        da_url = st.query_params.get("analista", "")
+    except Exception:
+        da_url = ""
+    return da_url.strip() or st.session_state.get("nome_analista", "")
+
+
+nome_analista = obter_nome_analista()
+
+if not nome_analista:
+    st.markdown(f"""
+    <style>
+      html, body, [data-testid="stAppViewContainer"] {{ background: #0B1622; }}
+      [data-testid="stHeader"] {{ background: transparent; }}
+      .block-container {{ max-width: 480px; padding-top: 8vh; }}
+      .boasvindas {{
+        background: linear-gradient(160deg, rgba(6,20,36,0.80), rgba(12,68,124,0.72)),
+          url('{FOTO_INDUSTRIA}') center/cover no-repeat;
+        border-radius: 22px; padding: 44px 40px 34px; text-align: center;
+      }}
+      .selo-glass {{ display: inline-block; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3);
+        color: #EAF3FC; font-size: 11.5px; padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }}
+      .boasvindas h1 {{ color: #fff; font-size: 21px; font-weight: 700; margin-bottom: 8px; }}
+      .boasvindas p {{ color: #D9EAFB; font-size: 13px; margin-bottom: 4px; line-height: 1.55; }}
+      .stTextInput input {{
+        background: rgba(255,255,255,0.16) !important; border: 1px solid rgba(255,255,255,0.38) !important;
+        border-radius: 12px !important; color: #fff !important; text-align: center;
+      }}
+      .stButton > button {{
+        background: rgba(255,255,255,0.94) !important; color: {AZUL_ESCURO} !important; border: none !important;
+        border-radius: 12px !important; font-weight: 700 !important;
+      }}
+    </style>
+    <div class="boasvindas">
+      <div class="selo-glass">Soluções Industriais</div>
+      <h1>Bem-vindo(a) ao Validador de Leads</h1>
+      <p>Antes de começar, como você se chama?</p>
+    </div>
+    """, unsafe_allow_html=True)
+    nome_digitado = st.text_input(
+        "Seu nome", key="f_nome_boas", label_visibility="collapsed", placeholder="Digite seu nome",
+    )
+    if st.button("Continuar", type="primary", use_container_width=True):
+        if nome_digitado.strip():
+            st.session_state["nome_analista"] = nome_digitado.strip()
+            st.query_params["analista"] = nome_digitado.strip()
+            st.rerun()
+        else:
+            st.warning("Digite seu nome para continuar.")
+    st.caption(
+        "Dica: depois de continuar, salve o link da barra de endereço nos favoritos — "
+        "assim o app já abre com o seu nome da próxima vez. Para algo definitivo, "
+        "peça para adicionar ANALISTA_NOME nos Secrets do seu app."
+    )
+    st.stop()
+
+st.session_state.setdefault("nome_analista", nome_analista)
 
 st.markdown(f"""
 <style>
-  [data-testid="stAppViewContainer"] {{
-    background:
-      linear-gradient(rgba(12, 68, 124, 0.86), rgba(10, 58, 107, 0.90)),
-      url('{IMG_FUNDO}') center / cover fixed no-repeat;
-  }}
+  html, body, [data-testid="stAppViewContainer"] {{ background: #0B1622; }}
   [data-testid="stHeader"] {{ background: transparent; }}
 
-  .block-container {{
-    background: rgba(255, 255, 255, 0.13);
+  .block-container {{ max-width: 1180px; padding-top: 1.4rem; padding-bottom: 3rem; }}
+
+  .block-container label, .block-container [data-testid="stWidgetLabel"] p {{
+    color: #D9EAFB !important; font-weight: 600 !important; font-size: 0.82rem !important;
+  }}
+  .block-container p, .block-container .stMarkdown {{ color: #AFCBE8; }}
+
+  .topbar-vidro {{ display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 18px; }}
+  .topbar-vidro .marca {{ display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 14px; }}
+  .topbar-vidro .marca .quad {{
+    width: 26px; height: 26px; border-radius: 7px; background: {AZUL};
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+  }}
+  .saudacao {{ color: #EAF3FC; font-size: 13.5px; }}
+  .saudacao b {{ color: #fff; }}
+
+  .hero {{
+    background: linear-gradient(160deg, rgba(6,20,36,0.72), rgba(12,68,124,0.58)),
+      url('{FOTO_INDUSTRIA}') center/cover no-repeat;
+    border-radius: 20px; padding: 34px 40px; margin-bottom: 20px;
+  }}
+  .hero .badge {{
+    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    color: #fff; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32);
+    padding: 3px 12px; border-radius: 999px; margin-bottom: 12px;
+  }}
+  .hero h1 {{ color: #ffffff; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px; }}
+  .hero p {{ color: #D6E8FB; font-size: 0.95rem; line-height: 1.5; max-width: 540px; margin: 0; }}
+
+  /* Painéis com borda (formulário e histórico) ganham a estética de vidro */
+  div[data-testid="stVerticalBlockBorderWrapper"] {{
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.16) !important;
+    border-radius: 18px !important;
     backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.32);
-    border-radius: 18px;
-    padding: 2.2rem 2.4rem 2.6rem;
-    margin-top: 2rem;
-    max-width: 780px;
   }}
 
-  .block-container label, .block-container p, .block-container .stMarkdown,
-  .block-container [data-testid="stWidgetLabel"] p {{ color: #EAF3FC !important; }}
-
-  .header-si h1 {{ color: #ffffff; font-size: 1.5rem; margin: 0 0 2px; }}
-  .header-si p {{ color: {AZUL_CLARO}; margin: 0 0 18px; font-size: 0.9rem; }}
-
-  .stButton > button[kind="primary"] {{
-    background: {AZUL}; border: 1px solid rgba(255,255,255,0.35); font-weight: 600;
+  /* Campos em vidro */
+  .stTextInput input, .stTextArea textarea, .stDateInput input {{
+    background: rgba(255,255,255,0.10) !important; border: 1px solid rgba(255,255,255,0.26) !important;
+    border-radius: 12px !important; color: #ffffff !important;
   }}
-  .stButton > button[kind="primary"] p {{ color: #ffffff !important; }}
-  .stButton > button[kind="primary"]:hover {{ background: {AZUL_ESCURO}; }}
+  .stTextInput input::placeholder, .stTextArea textarea::placeholder {{ color: rgba(255,255,255,0.45) !important; }}
+  .stTextInput input:focus, .stTextArea textarea:focus {{
+    border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
+  }}
+  div[data-baseweb="select"] > div {{
+    background: rgba(255,255,255,0.10) !important; border: 1px solid rgba(255,255,255,0.26) !important;
+    border-radius: 12px !important;
+  }}
+  div[data-baseweb="select"] * {{ color: #ffffff !important; }}
+
+  /* Botões em pílula, com feedback de pressão */
+  .stButton > button, .stDownloadButton > button {{
+    border-radius: 999px !important;
+    transition: transform 140ms ease-out, background 160ms ease-out;
+  }}
+  .stButton > button:active, .stDownloadButton > button:active {{ transform: scale(0.97); }}
+  .stButton > button[kind="primary"], .stDownloadButton > button {{
+    background: rgba(255,255,255,0.94) !important; border: none !important; font-weight: 700 !important;
+  }}
+  .stButton > button[kind="primary"] p, .stDownloadButton > button p {{ color: {AZUL_ESCURO} !important; }}
   .stButton > button[kind="secondary"] {{
-    background: rgba(255, 255, 255, 0.14);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.24) !important;
   }}
-  .stButton > button[kind="secondary"] p {{ color: #ffffff !important; }}
-  .stDownloadButton > button {{
-    background: {AZUL}; border: 1px solid rgba(255,255,255,0.35); font-weight: 600;
-  }}
-  .stDownloadButton > button p {{ color: #ffffff !important; }}
-  .stDownloadButton > button:hover {{ background: {AZUL_ESCURO}; }}
+  .stButton > button[kind="secondary"] p {{ color: #EAF3FC !important; }}
 
+  /* Métricas como cards de vidro */
   div[data-testid="stMetric"] {{
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 14px; padding: 12px 16px;
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.16) !important;
+    border-radius: 16px; padding: 16px 18px; backdrop-filter: blur(14px);
   }}
-  div[data-testid="stMetric"] label {{ color: {AZUL_CLARO} !important; }}
-  div[data-testid="stMetricValue"] {{ color: #ffffff; }}
-  div[data-testid="stMetricDelta"] {{ color: {AZUL_CLARO}; }}
+  div[data-testid="stMetric"] label {{ color: #AFCBE8 !important; font-weight: 600 !important; }}
+  div[data-testid="stMetricValue"] {{ color: #ffffff !important; font-weight: 700; }}
+  div[data-testid="stMetricDelta"] {{ color: #AFCBE8 !important; }}
 </style>
-<div class="header-si">
-  <h1>Validador de Leads <span style="font-size:0.8rem; background:rgba(255,255,255,0.25); border:1px solid rgba(255,255,255,0.4); color:#fff; padding:2px 10px; border-radius:20px; vertical-align:middle;">v3</span></h1>
-  <p>Soluções Industriais</p>
+
+<div class="topbar-vidro">
+  <div class="marca"><span class="quad">SI</span> Soluções Industriais · Validador de Leads</div>
+  <div class="saudacao">Olá, <b>{nome_analista}</b> 👋</div>
+</div>
+
+<div class="hero">
+  <span class="badge">v3 · vidro industrial</span>
+  <h1>Nova validação</h1>
+  <p>Informe a chave única do cliente e o período — o app busca sozinho o briefing, os orçamentos e os anúncios no Metabase.</p>
 </div>
 """, unsafe_allow_html=True)
+
+col_topo_vazio, col_trocar = st.columns([5, 1])
+with col_trocar:
+    if st.button("Trocar nome", use_container_width=True):
+        st.session_state.pop("nome_analista", None)
+        try:
+            del st.query_params["analista"]
+        except Exception:
+            pass
+        st.rerun()
 
 CAMPOS_FORM = ("f_chave", "f_site", "f_obs", "f_modelo")
 if st.session_state.pop("limpar_form", False):
@@ -628,45 +730,61 @@ if st.session_state.pop("limpar_form", False):
         st.session_state.pop(k, None)
     st.session_state.pop("resultado", None)
 
-col_a, col_c, col_d = st.columns([1.2, 1, 1])
-with col_a:
-    chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
-with col_c:
-    data_inicio = st.date_input("Data início", value=date.today() - timedelta(days=90), format="DD/MM/YYYY")
-with col_d:
-    data_fim = st.date_input("Data fim", value=date.today(), format="DD/MM/YYYY")
+with st.container(border=True):
+    grid_a, grid_b = st.columns(2)
+    with grid_a:
+        chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
+    with grid_b:
+        st.markdown(
+            "<div style='font-weight:600; font-size:0.82rem; color:#D9EAFB; margin-bottom:0.4rem;'>Período</div>",
+            unsafe_allow_html=True,
+        )
+        p_a, p_b = st.columns(2)
+        with p_a:
+            data_inicio = st.date_input(
+                "Início", value=date.today() - timedelta(days=90), format="DD/MM/YYYY", label_visibility="collapsed",
+            )
+        with p_b:
+            data_fim = st.date_input(
+                "Fim", value=date.today(), format="DD/MM/YYYY", label_visibility="collapsed",
+            )
 
-site = st.text_input(
-    "Site do cliente (opcional, mas importante quando não há briefing cadastrado)",
-    placeholder="https://www.sitedocliente.com.br", key="f_site",
-)
-obs = st.text_area(
-    "Outras observações (opcional, mas importante quando não há briefing cadastrado)",
-    placeholder="Ex.: cliente só vende máquinas (serviço, assistência, aluguel e peças = fora do foco); lote mínimo 500 peças; atende só Sul e Sudeste.",
-    height=90, key="f_obs",
-)
-modelo_escolha = st.selectbox(
-    "Modelo de IA",
-    list(MODELOS_ESCOLHA.keys()),
-    key="f_modelo",
-    help="Rápido = resposta mais veloz, boa para o dia a dia. Preciso = mais lento, "
-         "melhor em casos sutis. Automático usa o provedor com maior cota disponível.",
-)
+    grid_c, grid_d = st.columns(2)
+    with grid_c:
+        site = st.text_input(
+            "Site do cliente (opcional, mas importante quando não há briefing cadastrado)",
+            placeholder="https://www.sitedocliente.com.br", key="f_site",
+        )
+    with grid_d:
+        obs = st.text_area(
+            "Observações (opcional, mas importante quando não há briefing cadastrado)",
+            placeholder="Ex.: cliente só vende máquinas (serviço, assistência, aluguel e peças = fora do foco).",
+            height=90, key="f_obs",
+        )
+
+    linha_final_a, linha_final_b, linha_final_c = st.columns([2, 1, 1])
+    with linha_final_a:
+        modelo_escolha = st.selectbox(
+            "Modelo de IA",
+            list(MODELOS_ESCOLHA.keys()),
+            key="f_modelo",
+            help="Rápido = resposta mais veloz, boa para o dia a dia. Preciso = mais lento, "
+                 "melhor em casos sutis. Automático usa o provedor com maior cota disponível.",
+        )
+    with linha_final_b:
+        st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
+        if st.button("Limpar campos", use_container_width=True):
+            st.session_state["limpar_form"] = True
+            st.rerun()
+    with linha_final_c:
+        st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
+        validar = st.button("Validar leads", type="primary", use_container_width=True)
 
 
 def montar_regras():
     if obs.strip():
         return f"- Observações do projeto (prioridade máxima): {obs.strip()}"
     return ""
-
-
-col_btn1, col_btn2 = st.columns([3, 1])
-with col_btn2:
-    if st.button("Limpar campos", use_container_width=True):
-        st.session_state["limpar_form"] = True
-        st.rerun()
-with col_btn1:
-    validar = st.button("Enviar", type="primary", use_container_width=True)
 
 if validar:
     ordem_ia = provedores_ativos()
@@ -978,20 +1096,21 @@ if historico:
 
     for h in historico[:15]:
         rid = h.get("id", "")
-        c = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
-        c[0].markdown(f"<span style='font-size:0.78rem;'>{h.get('Data da solicitação', '')}</span>", unsafe_allow_html=True)
-        c[1].markdown(f"<span style='font-size:0.78rem;'>{h.get('Empresa', '')}</span>", unsafe_allow_html=True)
-        c[2].markdown(f"<span style='font-size:0.78rem;'>{h.get('Chave única', '')}</span>", unsafe_allow_html=True)
-        c[3].markdown(f"<span style='font-size:0.78rem;'>{h.get('Período', '')}</span>", unsafe_allow_html=True)
-        c[4].markdown(
-            f"<span style='font-size:0.78rem;'>{h.get('Leads', '')} "
-            f"(<span style='color:#9FE1A5;'>{h.get('Dentro do foco', '')}</span>/"
-            f"<span style='color:#F5A9A9;'>{h.get('Fora do foco', '')}</span>/"
-            f"<span style='color:#FAD98F;'>{h.get('Aberto', '')}</span>)</span>",
-            unsafe_allow_html=True,
-        )
-        if rid and c[5].button("✕", key=f"x_{rid}", help="Excluir esta pesquisa"):
-            dialogo_excluir(rid, f"{h.get('Empresa', '')} · {h.get('Data da solicitação', '')}")
+        with st.container(border=True):
+            c = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
+            c[0].markdown(f"<span style='font-size:0.78rem;'>{h.get('Data da solicitação', '')}</span>", unsafe_allow_html=True)
+            c[1].markdown(f"<span style='font-size:0.78rem;'>{h.get('Empresa', '')}</span>", unsafe_allow_html=True)
+            c[2].markdown(f"<span style='font-size:0.78rem;'>{h.get('Chave única', '')}</span>", unsafe_allow_html=True)
+            c[3].markdown(f"<span style='font-size:0.78rem;'>{h.get('Período', '')}</span>", unsafe_allow_html=True)
+            c[4].markdown(
+                f"<span style='font-size:0.78rem;'>{h.get('Leads', '')} "
+                f"(<span style='color:#22883A;'>{h.get('Dentro do foco', '')}</span>/"
+                f"<span style='color:#D6433F;'>{h.get('Fora do foco', '')}</span>/"
+                f"<span style='color:#B4830A;'>{h.get('Aberto', '')}</span>)</span>",
+                unsafe_allow_html=True,
+            )
+            if rid and c[5].button("✕", key=f"x_{rid}", help="Excluir esta pesquisa"):
+                dialogo_excluir(rid, f"{h.get('Empresa', '')} · {h.get('Data da solicitação', '')}")
     com_id = [h for h in historico if h.get("id")]
     if com_id:
         st.markdown("<p style='font-weight:600; margin-top:16px;'>Baixar arquivos de uma validação</p>", unsafe_allow_html=True)
