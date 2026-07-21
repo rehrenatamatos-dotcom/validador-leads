@@ -585,10 +585,14 @@ if not nome_analista:
         color: #EAF3FC; font-size: 11.5px; padding: 4px 14px; border-radius: 20px; margin-bottom: 16px; }}
       .boasvindas h1 {{ color: #fff; font-size: 21px; font-weight: 700; margin-bottom: 8px; }}
       .boasvindas p {{ color: #D9EAFB; font-size: 13px; margin-bottom: 4px; line-height: 1.55; }}
-      .stTextInput input {{
-        background: rgba(255,255,255,0.16) !important; border: 1px solid rgba(255,255,255,0.38) !important;
-        border-radius: 12px !important; color: #fff !important; text-align: center;
+      div[data-baseweb="input"] {{
+        background: rgba(255,255,255,0.14) !important; border: 1px solid rgba(255,255,255,0.38) !important;
+        border-radius: 12px !important;
       }}
+      div[data-baseweb="input"] input {{
+        background: transparent !important; color: #ffffff !important; text-align: center;
+      }}
+      div[data-baseweb="input"] input::placeholder {{ color: rgba(255,255,255,0.55) !important; }}
       .stButton > button {{
         background: rgba(255,255,255,0.94) !important; color: {AZUL_ESCURO} !important; border: none !important;
         border-radius: 12px !important; font-weight: 700 !important;
@@ -661,20 +665,26 @@ st.markdown(f"""
     backdrop-filter: blur(16px);
   }}
 
-  /* Campos em vidro */
-  .stTextInput input, .stTextArea textarea, .stDateInput input {{
-    background: rgba(255,255,255,0.10) !important; border: 1px solid rgba(255,255,255,0.26) !important;
-    border-radius: 12px !important; color: #ffffff !important;
-  }}
-  .stTextInput input::placeholder, .stTextArea textarea::placeholder {{ color: rgba(255,255,255,0.45) !important; }}
-  .stTextInput input:focus, .stTextArea textarea:focus {{
-    border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
-  }}
-  div[data-baseweb="select"] > div {{
+  /* Campos em vidro — no baseweb (biblioteca por baixo do Streamlit), o "quadrado"
+     visível com fundo e borda é o div[data-baseweb=...], não o input/textarea em si. */
+  div[data-baseweb="input"], div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
     background: rgba(255,255,255,0.10) !important; border: 1px solid rgba(255,255,255,0.26) !important;
     border-radius: 12px !important;
   }}
-  div[data-baseweb="select"] * {{ color: #ffffff !important; }}
+  div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea,
+  div[data-baseweb="select"] div, div[data-baseweb="select"] span {{
+    background: transparent !important; color: #ffffff !important;
+  }}
+  div[data-baseweb="input"] input::placeholder, div[data-baseweb="textarea"] textarea::placeholder {{
+    color: rgba(255,255,255,0.45) !important;
+  }}
+  div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
+    border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
+  }}
+  /* Menus flutuantes (opções do selectbox, calendário do date_input) ficam escuros também */
+  div[data-baseweb="popover"] {{ background: {AZUL_ESCURO} !important; }}
+  div[data-baseweb="popover"] * {{ color: #ffffff !important; }}
+  div[data-baseweb="popover"] li:hover {{ background: rgba(255,255,255,0.12) !important; }}
 
   /* Botões em pílula, com feedback de pressão */
   .stButton > button, .stDownloadButton > button {{
