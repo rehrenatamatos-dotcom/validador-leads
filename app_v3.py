@@ -681,10 +681,24 @@ st.markdown(f"""
   div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
     border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
   }}
-  /* Menus flutuantes (opções do selectbox, calendário do date_input) ficam escuros também */
-  div[data-baseweb="popover"] {{ background: {AZUL_ESCURO} !important; }}
-  div[data-baseweb="popover"] * {{ color: #ffffff !important; }}
-  div[data-baseweb="popover"] li:hover {{ background: rgba(255,255,255,0.12) !important; }}
+  /* Menus flutuantes (opções do selectbox e o calendário do date_input) — no baseweb
+     essas caixas têm fundo branco embutido em vários níveis, então zeramos tudo por
+     dentro e pintamos só o nível de fora, escuro, translúcido. */
+  div[data-baseweb="popover"] {{
+    background: {AZUL_ESCURO} !important;
+    border: 1px solid rgba(255,255,255,0.18) !important;
+    border-radius: 14px !important;
+  }}
+  div[data-baseweb="popover"] * {{ background: transparent !important; color: #ffffff !important; }}
+  div[data-baseweb="popover"] li:hover,
+  div[data-baseweb="popover"] [aria-selected="true"]:not([role="gridcell"]) {{
+    background: rgba(255,255,255,0.14) !important;
+  }}
+  div[data-baseweb="calendar"] {{ background: {AZUL_ESCURO} !important; }}
+  div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] div {{
+    background: {AZUL} !important; border-radius: 50% !important; color: #ffffff !important;
+  }}
+  div[data-baseweb="calendar"] [role="gridcell"]:hover div {{ background: rgba(255,255,255,0.16) !important; }}
 
   /* Botões em pílula, com feedback de pressão */
   .stButton > button, .stDownloadButton > button {{
