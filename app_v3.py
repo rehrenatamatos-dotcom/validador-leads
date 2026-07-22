@@ -262,14 +262,17 @@ MODELO_DASH = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relatório de Validação — __EMPRESA__</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: __BG_PAGINA__; padding: 24px; }
-  .tela { max-width: 1180px; margin: 0 auto; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(0,0,0,0.5); background: __BG_TELA__; }
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: __BG_PAGINA__; }
+  .tela { max-width: 1180px; margin: 0 auto; background: __BG_TELA__; }
   .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: __BG_NAV__; border-bottom: 1px solid __BORDA_NAV__; }
   .nav .logo { display: flex; align-items: center; gap: 10px; color: __TXT_LOGO__; font-weight: 700; font-size: 14px; }
   .nav .logo .quad { width: 26px; height: 26px; border-radius: 7px; background: #185FA5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; }
-  .nav .baixar { font-size: 12px; color: __BAIXAR_TXT__; background: __BAIXAR_BG__; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; }
+  .nav .dir { display: flex; align-items: center; gap: 10px; }
+  .nav .baixar { font-size: 12px; color: __BAIXAR_TXT__; background: __BAIXAR_BG__; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; }
+  .nav .baixar-imagem { background: transparent; border: 1px solid __SELO_BORDA__; color: __TXT_LOGO__; }
   .hero {
     padding: 24px 36px 20px;
     background: __HERO_OVERLAY__,
@@ -311,10 +314,13 @@ MODELO_DASH = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-<div class="tela">
+<div class="tela" id="tela-captura">
   <div class="nav">
     <div class="logo"><span class="quad">SI</span> Validador de Leads</div>
-    __BOTAO_EXCEL__
+    <div class="dir">
+      __BOTAO_EXCEL__
+      <button class="baixar baixar-imagem" id="btnBaixarImagem" type="button">Baixar imagem</button>
+    </div>
   </div>
   <div class="hero">
     <div>
@@ -364,6 +370,22 @@ new Chart(document.getElementById("rosca"), {
     datasets: [{ data: [__N_DENTRO__, __N_FORA__, __N_ABERTO__], backgroundColor: ["#1D9E75", "#D85A30", "#BA7517"], borderWidth: 0 }]
   },
   options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: "__COR_LEGENDA__", font: { size: 12 } } } } }
+});
+
+document.getElementById("btnBaixarImagem").addEventListener("click", function () {
+  var btn = this;
+  btn.textContent = "Gerando imagem...";
+  html2canvas(document.getElementById("tela-captura"), { backgroundColor: "__BG_PAGINA__", scale: 2, useCORS: true })
+    .then(function (canvas) {
+      var link = document.createElement("a");
+      link.download = "__NOME_IMAGEM__.jpg";
+      link.href = canvas.toDataURL("image/jpeg", 0.92);
+      link.click();
+      btn.textContent = "Baixar imagem";
+    })
+    .catch(function () {
+      btn.textContent = "Erro ao gerar — tente de novo";
+    });
 });
 </script>
 </body>
@@ -490,6 +512,7 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
         "__LINHAS_PIORES__": linhas_leads(piores, "verm"),
         "__LINHAS_ANUNCIOS__": linhas_anuncios(anuncios_ruins),
         "__BOTAO_EXCEL__": botao_excel(),
+        "__NOME_IMAGEM__": re.sub(r"[^\w\-]+", "-", f"dashboard-{empresa}").strip("-").lower() or "dashboard",
     }
     for chave_cor, valor_cor in cores.items():
         trocas[f"__{chave_cor}__"] = valor_cor
@@ -689,12 +712,19 @@ st.markdown(f"""
   .hero h1 {{ color: {T['hero_titulo']}; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px; }}
   .hero p {{ color: {T['hero_sub']}; font-size: 0.95rem; line-height: 1.5; max-width: 540px; margin: 0; }}
 
-  /* Painéis com borda (formulário e histórico) ganham a estética de vidro */
+  /* Painéis com borda (formulário e histórico) ganham a estética de vidro.
+     Zeramos margem/sombra extra do próprio Streamlit para não sobrar aquela
+     "moldura dentro da moldura" — só uma borda visível, a do painel mesmo. */
   div[data-testid="stVerticalBlockBorderWrapper"] {{
     background: {T['painel_bg']} !important;
     border: 1px solid {T['painel_borda']} !important;
     border-radius: 18px !important;
     backdrop-filter: blur(16px);
+    margin: 0 !important;
+    box-shadow: none !important;
+  }}
+  div[data-testid="stVerticalBlockBorderWrapper"] > div {{
+    margin: 0 !important;
   }}
 
   /* Campos em vidro — cobrimos tanto o div[data-baseweb=...] (usado por alguns
