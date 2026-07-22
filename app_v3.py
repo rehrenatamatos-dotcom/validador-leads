@@ -931,11 +931,11 @@ with st.container(border=True, key="painel_form"):
     with linha_final_b:
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
         confirmando_limpeza = st.session_state.get("confirmar_limpar", False)
-        st.session_state["confirmar_limpar"] = False  # só fica armado por 1 interação
         rotulo_limpar = "Confirmar limpeza?" if confirmando_limpeza else "Limpar campos"
         if st.button(rotulo_limpar, use_container_width=True, key="btn_limpar",
                       type=("primary" if confirmando_limpeza else "secondary")):
             if confirmando_limpeza:
+                st.session_state["confirmar_limpar"] = False
                 st.session_state["limpar_form"] = True
                 st.rerun()
             else:
@@ -982,6 +982,7 @@ def montar_regras():
 
 if validar:
     st.session_state.pop("resultado", None)  # some o resultado da consulta anterior — evita baixar o arquivo errado
+    st.session_state["confirmar_limpar"] = False  # desarma um "Confirmar limpeza?" pendente
     ordem_ia = provedores_ativos()
     if not ordem_ia:
         st.error("Nenhuma chave de IA configurada. Adicione CEREBRAS_API_KEY ou GROQ_API_KEY nos Secrets.")
