@@ -959,6 +959,7 @@ def montar_regras():
     return ""
 
 if validar:
+    st.session_state.pop("resultado", None)  # some o resultado da consulta anterior — evita baixar o arquivo errado
     ordem_ia = provedores_ativos()
     if not ordem_ia:
         st.error("Nenhuma chave de IA configurada. Adicione CEREBRAS_API_KEY ou GROQ_API_KEY nos Secrets.")
@@ -1276,14 +1277,15 @@ if historico:
         historico = [h for h in historico if alvo in str(h.get("Chave única", "")).lower()]
         if not historico:
             st.caption("Nenhuma validação encontrada para essa chave.")
-    cab = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
-    for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "")):
+    colunas_hist = [1.3, 1.4, 1.1, 1.6, 1.0, 0.4, 0.4, 0.4]
+    cab = st.columns(colunas_hist)
+    for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "", "", "")):
         col.markdown(f"<span style='font-size:0.72rem; color:{T['texto']}; font-weight:600;'>{titulo}</span>", unsafe_allow_html=True)
 
-    for h in historico[:15]:
+    for h in historico:
         rid = h.get("id", "")
         with st.container(border=True):
-            c = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
+            c = st.columns(colunas_hist)
             c[0].markdown(f"<span style='font-size:0.78rem;'>{h.get('Data da solicitação', '')}</span>", unsafe_allow_html=True)
             c[1].markdown(f"<span style='font-size:0.78rem;'>{h.get('Empresa', '')}</span>", unsafe_allow_html=True)
             c[2].markdown(f"<span style='font-size:0.78rem;'>{h.get('Chave única', '')}</span>", unsafe_allow_html=True)
@@ -1295,36 +1297,23 @@ if historico:
                 f"<span style='color:#B4830A;'>{h.get('Aberto', '')}</span>)</span>",
                 unsafe_allow_html=True,
             )
-            if rid and c[5].button("✕", key=f"x_{rid}", help="Excluir esta pesquisa"):
-                dialogo_excluir(rid, f"{h.get('Empresa', '')} · {h.get('Data da solicitação', '')}")
-    com_id = [h for h in historico if h.get("id")]
-    if com_id:
-        st.markdown("<p style='font-weight:600; margin-top:16px;'>Baixar arquivos de uma validação</p>", unsafe_allow_html=True)
-        rotulos = {
-            f"{h['Data da solicitação']} · {h.get('Empresa', '?')} · {h.get('Leads', '?')} leads": h
-            for h in com_id[:15]
-        }
-        escolha = st.selectbox("Selecione a validação", list(rotulos.keys()), label_visibility="collapsed")
-        sel = rotulos[escolha]
-        rid = sel["id"]
-        xlsx_salvo = ler_resultado_salvo(rid, ".xlsx")
-        dash_salvo = ler_resultado_salvo(rid, ".html")
-        cg1, cg2 = st.columns(2)
-        with cg1:
+            # download direto na própria linha — sem precisar abrir um seletor à parte
+            xlsx_salvo = ler_resultado_salvo(rid, ".xlsx") if rid else None
+            dash_salvo = ler_resultado_salvo(rid, ".html") if rid else None
             if xlsx_salvo:
-                st.download_button("Baixar Excel", data=xlsx_salvo,
-                                   file_name=sel.get("xlsx_nome", f"{rid}.xlsx"),
-                                   mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                   use_container_width=True, key=f"hxlsx_{rid}")
+                c[5].download_button("⬇︎", data=xlsx_salvo, file_name=h.get("xlsx_nome", f"{rid}.xlsx"),
+                                      mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                      use_container_width=True, key=f"hxlsx_{rid}", help="Baixar Excel")
             else:
-                st.caption("Excel não disponível (ferramenta reiniciada)")
-        with cg2:
+                c[5].caption("—")
             if dash_salvo:
-                st.download_button("Baixar dashboard", data=dash_salvo,
-                                   file_name=sel.get("dash_nome", f"{rid}.html"),
-                                   mime="text/html", use_container_width=True, key=f"hdash_{rid}")
+                c[6].download_button("🖥", data=dash_salvo, file_name=h.get("dash_nome", f"{rid}.html"),
+                                      mime="text/html", use_container_width=True, key=f"hdash_{rid}",
+                                      help="Baixar dashboard")
             else:
-                st.caption("Dashboard não disponível (ferramenta reiniciada)")
+                c[6].caption("—")
+            if rid and c[7].button("✕", key=f"x_{rid}", help="Excluir esta pesquisa"):
+                dialogo_excluir(rid, f"{h.get('Empresa', '')} · {h.get('Data da solicitação', '')}")
 else:
     st.caption("Nenhuma validação registrada ainda. As próximas aparecerão aqui com data, empresa e resultado.")
 
