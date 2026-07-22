@@ -15,6 +15,27 @@ import streamlit as st
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
+def svg_logo_si(cor, fundo):
+    """Marca 'Soluções Industriais' recriada em SVG (skyline + smartphone).
+    Não há como usar o arquivo de imagem original diretamente aqui — então
+    recriamos o ícone, colorido conforme o tema (cor do traço + cor de fundo
+    do 'recorte' da tela do aparelho)."""
+    return f"""<svg class="logo-si" width="28" height="17" viewBox="0 0 300 180" xmlns="http://www.w3.org/2000/svg">
+  <path d="M0 150 L40 95 L60 118 L92 72 L112 100 L132 62 L150 100 L150 150 Z" fill="{cor}"/>
+  <path d="M300 150 L260 95 L240 118 L208 72 L188 100 L168 62 L150 100 L150 150 Z" fill="{cor}"/>
+  <rect x="16" y="126" width="13" height="10" fill="{cor}"/>
+  <rect x="58" y="126" width="13" height="10" fill="{cor}"/>
+  <rect x="229" y="126" width="13" height="10" fill="{cor}"/>
+  <rect x="271" y="126" width="13" height="10" fill="{cor}"/>
+  <path d="M228 60 q10 -8 4 -20" stroke="{cor}" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <rect x="112" y="16" width="76" height="140" rx="20" fill="{cor}"/>
+  <rect x="126" y="30" width="48" height="94" rx="7" fill="{fundo}"/>
+  <circle cx="150" cy="62" r="13" fill="{fundo}"/>
+  <circle cx="150" cy="62" r="5.5" fill="{cor}"/>
+  <circle cx="150" cy="146" r="6" fill="{fundo}"/>
+</svg>"""
+
+
 # Cores de destaque no Excel por status
 FILL_DENTRO = PatternFill("solid", fgColor="C6EFCE")   # verde
 FILL_FORA = PatternFill("solid", fgColor="FFC7CE")     # vermelho
@@ -282,7 +303,7 @@ MODELO_DASH = """<!DOCTYPE html>
   .tela { max-width: 1180px; margin: 0 auto; background: __BG_TELA__; }
   .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: __BG_NAV__; border-bottom: 1px solid __BORDA_NAV__; }
   .nav .logo { display: flex; align-items: center; gap: 10px; color: __TXT_LOGO__; font-weight: 700; font-size: 14px; }
-  .nav .logo .quad { width: 26px; height: 26px; border-radius: 7px; background: #185FA5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; }
+  .nav .logo .logo-si { flex-shrink: 0; }
   .nav .dir { display: flex; align-items: center; gap: 10px; }
   .nav .baixar { font-size: 12px; color: __BAIXAR_TXT__; background: __BAIXAR_BG__; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; border: none; cursor: pointer; }
   .nav .baixar-imagem { background: transparent; border: 1px solid __SELO_BORDA__; color: __TXT_LOGO__; }
@@ -329,7 +350,7 @@ MODELO_DASH = """<!DOCTYPE html>
 <body>
 <div class="tela" id="tela-captura">
   <div class="nav">
-    <div class="logo"><span class="quad">SI</span> Validador de Leads</div>
+    <div class="logo">__LOGO_SI__ Validador de Leads</div>
     <div class="dir">
       __BOTAO_EXCEL__
       <button class="baixar baixar-imagem" id="btnBaixarImagem" type="button">Baixar imagem</button>
@@ -528,6 +549,7 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
         "__LINHAS_ANUNCIOS__": linhas_anuncios(anuncios_ruins),
         "__BOTAO_EXCEL__": botao_excel(),
         "__NOME_IMAGEM__": re.sub(r"[^\w\-]+", "-", f"dashboard-{empresa}").strip("-").lower() or "dashboard",
+        "__LOGO_SI__": svg_logo_si(cores["TXT_LOGO"], cores["BG_TELA"]),
     }
     for chave_cor, valor_cor in cores.items():
         trocas[f"__{chave_cor}__"] = valor_cor
@@ -696,6 +718,9 @@ TEMAS_APP = {
 tema = st.session_state.get("tema", "escuro")
 T = TEMAS_APP[tema]
 
+# Marca "Soluções Industriais" na cor certa para o tema atual do app.
+LOGO_SI = svg_logo_si(T['badge_txt'], T['fundo'])
+
 st.markdown(f"""
 <style>
   html, body, [data-testid="stAppViewContainer"] {{ background: {T['fundo']}; }}
@@ -710,10 +735,7 @@ st.markdown(f"""
 
   .topbar-vidro {{ display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 18px; }}
   .topbar-vidro .marca {{ display: flex; align-items: center; gap: 10px; color: {T['label']}; font-weight: 700; font-size: 14px; }}
-  .topbar-vidro .marca .quad {{
-    width: 26px; height: 26px; border-radius: 7px; background: {AZUL};
-    display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff;
-  }}
+  .topbar-vidro .marca .logo-si {{ flex-shrink: 0; }}
 
   .hero {{
     background: {T['hero_overlay']}, url('{FOTO_INDUSTRIA}') center/cover no-repeat;
@@ -837,7 +859,7 @@ st.markdown(f"""
 </style>
 
 <div class="topbar-vidro">
-  <div class="marca"><span class="quad">SI</span> Soluções Industriais · Validador de Leads</div>
+  <div class="marca">{LOGO_SI} Soluções Industriais · Validador de Leads</div>
 </div>
 
 <div class="hero">
