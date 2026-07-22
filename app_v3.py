@@ -264,52 +264,49 @@ MODELO_DASH = """<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #10161F; padding: 24px; }
-  .tela { max-width: 1180px; margin: 0 auto; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(0,0,0,0.6); background: #0C1D30; }
-  .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .nav .logo { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 14px; }
-  .nav .logo .quad { width: 26px; height: 26px; border-radius: 7px; background: #185FA5; display: flex; align-items: center; justify-content: center; font-size: 11px; }
-  .nav .dir { display: flex; align-items: center; gap: 14px; }
-  .nav .quem { color: #EAF3FC; font-size: 13.5px; }
-  .nav .quem b { color: #fff; }
-  .nav .baixar { font-size: 12px; color: #0C447C; background: #fff; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; }
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: __BG_PAGINA__; padding: 24px; }
+  .tela { max-width: 1180px; margin: 0 auto; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 70px -20px rgba(0,0,0,0.5); background: __BG_TELA__; }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; background: __BG_NAV__; border-bottom: 1px solid __BORDA_NAV__; }
+  .nav .logo { display: flex; align-items: center; gap: 10px; color: __TXT_LOGO__; font-weight: 700; font-size: 14px; }
+  .nav .logo .quad { width: 26px; height: 26px; border-radius: 7px; background: #185FA5; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; }
+  .nav .baixar { font-size: 12px; color: __BAIXAR_TXT__; background: __BAIXAR_BG__; padding: 8px 16px; border-radius: 20px; font-weight: 700; text-decoration: none; }
   .hero {
     padding: 24px 36px 20px;
-    background: linear-gradient(160deg, rgba(6,20,36,0.62), rgba(12,68,124,0.5)),
+    background: __HERO_OVERLAY__,
       url('https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1900&q=70') center/cover no-repeat;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
   }
-  .hero h1 { color: #fff; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-  .hero p { color: #D9EAFB; font-size: 12.5px; }
-  .selo { background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32); color: #fff; font-size: 12.5px; padding: 7px 16px; border-radius: 30px; }
+  .hero h1 { color: __TXT_TITULO__; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .hero p { color: __TXT_SUB__; font-size: 12.5px; }
+  .selo { background: __SELO_BG__; border: 1px solid __SELO_BORDA__; color: __SELO_TXT__; font-size: 12.5px; padding: 7px 16px; border-radius: 30px; }
   .selo b { font-size: 14px; }
   .corpo { padding: 24px 36px 30px; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-  .kpi { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 16px 18px; }
-  .kpi .lbl { font-size: 11px; color: #AFCBE8; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
-  .kpi .num { font-size: 24px; font-weight: 700; color: #fff; }
-  .kpi .num.v { color: #4FD1A5; } .kpi .num.r { color: #F0997B; } .kpi .num.a { color: #FAC775; }
-  .kpi .sub { font-size: 11px; color: #7C93AC; margin-top: 4px; }
+  .kpi { background: __BG_KPI__; border: 1px solid __BORDA_KPI__; border-radius: 14px; padding: 16px 18px; }
+  .kpi .lbl { font-size: 11px; color: __TXT_LBL__; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+  .kpi .num { font-size: 24px; font-weight: 700; color: __TXT_NUM__; }
+  .kpi .num.v { color: #1D9E75; } .kpi .num.r { color: #D85A30; } .kpi .num.a { color: #BA7517; }
+  .kpi .sub { font-size: 11px; color: __TXT_LBL__; margin-top: 4px; }
   .linha { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-  .painel { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; padding: 20px 22px; }
-  .painel h2 { color: #fff; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
+  .painel { background: __BG_KPI__; border: 1px solid __BORDA_KPI__; border-radius: 14px; padding: 20px 22px; }
+  .painel h2 { color: __TXT_NUM__; font-size: 13.5px; font-weight: 700; margin-bottom: 12px; }
   .painel h2 .pin { font-size: 11px; padding: 2px 8px; border-radius: 20px; vertical-align: middle; margin-left: 6px; font-weight: 600; }
-  .pin-verde { background: rgba(79,209,165,0.18); color: #4FD1A5; }
-  .pin-verm { background: rgba(240,153,123,0.18); color: #F0997B; }
+  .pin-verde { background: rgba(29,158,117,0.18); color: #1D9E75; }
+  .pin-verm { background: rgba(216,90,48,0.18); color: #D85A30; }
   .grafico { height: 210px; position: relative; }
-  .lista-lead { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 12.5px; gap: 10px; }
+  .lista-lead { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid __BORDA_LISTA__; font-size: 12.5px; gap: 10px; }
   .lista-lead:last-child { border-bottom: none; }
-  .lista-lead .nome { color: #EAF3FC; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .lista-lead .nome { color: __TXT_NOME_LEAD__; font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .pin-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .pin-dot-verde { background: #4FD1A5; } .pin-dot-verm { background: #F0997B; }
-  .lista-lead .email { color: #7C93AC; font-size: 11.5px; text-align: right; }
-  .vazio { color: rgba(234,243,252,0.55); font-size: 12px; }
+  .pin-dot-verde { background: #1D9E75; } .pin-dot-verm { background: #D85A30; }
+  .lista-lead .email { color: __TXT_EMAIL_LEAD__; font-size: 11.5px; text-align: right; }
+  .vazio { color: __TXT_VAZIO__; font-size: 12px; }
   .anuncio-linha { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 12.5px; }
-  .anuncio-linha .nome { width: 150px; color: #EAF3FC; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .barra-fundo { flex: 1; height: 8px; background: rgba(255,255,255,0.12); border-radius: 5px; overflow: hidden; }
-  .barra-cheia { height: 100%; background: #F0997B; border-radius: 5px; }
-  .anuncio-linha .qtd { width: 22px; text-align: right; color: #AFCBE8; }
-  .rodape { text-align: center; color: rgba(234,243,252,0.5); font-size: 11px; padding: 18px 0 0; }
+  .anuncio-linha .nome { width: 150px; color: __TXT_NOME_LEAD__; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barra-fundo { flex: 1; height: 8px; background: __BARRA_FUNDO__; border-radius: 5px; overflow: hidden; }
+  .barra-cheia { height: 100%; background: #D85A30; border-radius: 5px; }
+  .anuncio-linha .qtd { width: 22px; text-align: right; color: __TXT_LBL__; }
+  .rodape { text-align: center; color: __TXT_RODAPE__; font-size: 11px; padding: 18px 0 0; }
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } .linha { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -317,10 +314,7 @@ MODELO_DASH = """<!DOCTYPE html>
 <div class="tela">
   <div class="nav">
     <div class="logo"><span class="quad">SI</span> Validador de Leads</div>
-    <div class="dir">
-      <div class="quem">Gerado por <b>__ANALISTA__</b></div>
-      __BOTAO_EXCEL__
-    </div>
+    __BOTAO_EXCEL__
   </div>
   <div class="hero">
     <div>
@@ -367,13 +361,46 @@ new Chart(document.getElementById("rosca"), {
   type: "doughnut",
   data: {
     labels: ["Dentro do foco", "Fora do foco", "Aberto"],
-    datasets: [{ data: [__N_DENTRO__, __N_FORA__, __N_ABERTO__], backgroundColor: ["#4FD1A5", "#F0997B", "#FAC775"], borderWidth: 0 }]
+    datasets: [{ data: [__N_DENTRO__, __N_FORA__, __N_ABERTO__], backgroundColor: ["#1D9E75", "#D85A30", "#BA7517"], borderWidth: 0 }]
   },
-  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: "#EAF3FC", font: { size: 12 } } } } }
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: "__COR_LEGENDA__", font: { size: 12 } } } } }
 });
 </script>
 </body>
 </html>"""
+
+# Cores do dashboard por tema — o dashboard baixado nasce fixo na cor do tema
+# que estava ativo no app no momento da validação (não tem alternador nele).
+TEMAS_DASH = {
+    "escuro": {
+        "BG_PAGINA": "#10161F", "BG_TELA": "#0C1D30",
+        "BG_NAV": "rgba(255,255,255,0.05)", "BORDA_NAV": "rgba(255,255,255,0.08)",
+        "TXT_LOGO": "#ffffff",
+        "HERO_OVERLAY": "linear-gradient(160deg, rgba(6,20,36,0.62), rgba(12,68,124,0.5))",
+        "TXT_TITULO": "#ffffff", "TXT_SUB": "#D9EAFB",
+        "SELO_BG": "rgba(255,255,255,0.16)", "SELO_BORDA": "rgba(255,255,255,0.32)", "SELO_TXT": "#ffffff",
+        "BG_KPI": "rgba(255,255,255,0.08)", "BORDA_KPI": "rgba(255,255,255,0.14)",
+        "TXT_LBL": "#AFCBE8", "TXT_NUM": "#ffffff",
+        "TXT_NOME_LEAD": "#EAF3FC", "TXT_EMAIL_LEAD": "#7C93AC", "BORDA_LISTA": "rgba(255,255,255,0.08)",
+        "TXT_VAZIO": "rgba(234,243,252,0.55)", "BARRA_FUNDO": "rgba(255,255,255,0.12)",
+        "BAIXAR_BG": "#ffffff", "BAIXAR_TXT": "#0C447C",
+        "TXT_RODAPE": "rgba(234,243,252,0.5)", "COR_LEGENDA": "#EAF3FC",
+    },
+    "claro": {
+        "BG_PAGINA": "#EEF3FA", "BG_TELA": "#EEF3FA",
+        "BG_NAV": "rgba(255,255,255,0.75)", "BORDA_NAV": "rgba(24,95,165,0.10)",
+        "TXT_LOGO": "#0C2036",
+        "HERO_OVERLAY": "linear-gradient(160deg, rgba(230,241,251,0.88), rgba(181,212,244,0.68))",
+        "TXT_TITULO": "#0C2036", "TXT_SUB": "#33475C",
+        "SELO_BG": "rgba(255,255,255,0.7)", "SELO_BORDA": "rgba(24,95,165,0.2)", "SELO_TXT": "#0C447C",
+        "BG_KPI": "rgba(255,255,255,0.72)", "BORDA_KPI": "rgba(255,255,255,0.9)",
+        "TXT_LBL": "#5C7089", "TXT_NUM": "#0C2036",
+        "TXT_NOME_LEAD": "#0C2036", "TXT_EMAIL_LEAD": "#5C7089", "BORDA_LISTA": "rgba(24,95,165,0.12)",
+        "TXT_VAZIO": "#7C8CA1", "BARRA_FUNDO": "rgba(24,95,165,0.12)",
+        "BAIXAR_BG": "#0C447C", "BAIXAR_TXT": "#ffffff",
+        "TXT_RODAPE": "#7C8CA1", "COR_LEGENDA": "#33475C",
+    },
+}
 
 
 def gerar_xlsx(cabecalho, registros, leads, classificacoes):
@@ -408,7 +435,7 @@ def gerar_xlsx(cabecalho, registros, leads, classificacoes):
 
 def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
                          melhores=None, piores=None, anuncios_ruins=None,
-                         analista="", xlsx_bytes=None, xlsx_nome="leads.xlsx"):
+                         tema="escuro", xlsx_bytes=None, xlsx_nome="leads.xlsx"):
     def pct(n):
         return str(round(100 * n / total)) if total else "0"
 
@@ -444,12 +471,13 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
             f'Baixar Excel</a>'
         )
 
+    cores = TEMAS_DASH.get(tema, TEMAS_DASH["escuro"])
+
     html = MODELO_DASH
     trocas = {
         "__EMPRESA__": empresa,
         "__CHAVE__": chave,
         "__PERIODO__": periodo,
-        "__ANALISTA__": analista or "equipe",
         "__GERADO__": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "__TOTAL__": str(total),
         "__PCT_DENTRO__": pct(contagem["Dentro do foco"]),
@@ -463,6 +491,8 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
         "__LINHAS_ANUNCIOS__": linhas_anuncios(anuncios_ruins),
         "__BOTAO_EXCEL__": botao_excel(),
     }
+    for chave_cor, valor_cor in cores.items():
+        trocas[f"__{chave_cor}__"] = valor_cor
     for k, v in trocas.items():
         html = html.replace(k, v)
     return html
@@ -576,117 +606,93 @@ st.set_page_config(page_title="Validador de Leads v3", page_icon="✅", layout="
 
 FOTO_INDUSTRIA = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=1900&q=70"
 
+# Tema visual: claro ou escuro, trocável a qualquer momento pelo alternador no topo.
+# Fica só na sessão (não tenta "lembrar" entre acessos diferentes — mantém simples).
+TEMAS_APP = {
+    "escuro": {
+        "fundo": "#0B1622",
+        "hero_overlay": "linear-gradient(160deg, rgba(6,20,36,0.72), rgba(12,68,124,0.58))",
+        "label": "#D9EAFB",
+        "texto": "#AFCBE8",
+        "painel_bg": "rgba(255,255,255,0.08)",
+        "painel_borda": "rgba(255,255,255,0.16)",
+        "input_bg": "rgba(255,255,255,0.10)",
+        "input_borda": "rgba(255,255,255,0.26)",
+        "input_txt": "#ffffff",
+        "placeholder": "rgba(255,255,255,0.45)",
+        "popover_bg": AZUL_ESCURO,
+        "popover_txt": "#ffffff",
+        "sec_btn_bg": "rgba(255,255,255,0.08)",
+        "sec_btn_borda": "rgba(255,255,255,0.24)",
+        "sec_btn_txt": "#EAF3FC",
+        "hero_titulo": "#ffffff",
+        "hero_sub": "#F1F6FC",
+        "badge_bg": "rgba(255,255,255,0.16)",
+        "badge_borda": "rgba(255,255,255,0.32)",
+        "badge_txt": "#ffffff",
+    },
+    "claro": {
+        "fundo": "#EEF3FA",
+        "hero_overlay": "linear-gradient(160deg, rgba(230,241,251,0.90), rgba(181,212,244,0.72))",
+        "label": "#33475C",
+        "texto": "#5C7089",
+        "painel_bg": "rgba(255,255,255,0.72)",
+        "painel_borda": "rgba(255,255,255,0.9)",
+        "input_bg": "rgba(255,255,255,0.75)",
+        "input_borda": "rgba(24,95,165,0.20)",
+        "input_txt": "#0C2036",
+        "placeholder": "#8CA0B8",
+        "popover_bg": "#FFFFFF",
+        "popover_txt": "#0C2036",
+        "sec_btn_bg": "rgba(255,255,255,0.60)",
+        "sec_btn_borda": "rgba(24,95,165,0.20)",
+        "sec_btn_txt": AZUL_ESCURO,
+        "hero_titulo": "#0C2036",
+        "hero_sub": "#33475C",
+        "badge_bg": "rgba(12,32,54,0.10)",
+        "badge_borda": "rgba(12,32,54,0.22)",
+        "badge_txt": "#0C2036",
+    },
+}
 
-def obter_nome_analista():
-    """Nome do analista: Secrets (ANALISTA_NOME, fixo e definitivo) > link salvo
-    (?analista=... na URL) > sessão atual. Cada analista tem seu próprio app, então
-    o mais simples e permanente é configurar ANALISTA_NOME nos Secrets dele."""
-    nome = secret("ANALISTA_NOME")
-    if nome:
-        return nome
-    try:
-        da_url = st.query_params.get("analista", "")
-    except Exception:
-        da_url = ""
-    return da_url.strip() or st.session_state.get("nome_analista", "")
-
-
-nome_analista = obter_nome_analista()
-
-if not nome_analista:
-    st.markdown(f"""
-    <style>
-      html, body, [data-testid="stAppViewContainer"] {{ background: #0B1622; }}
-      [data-testid="stHeader"] {{ background: transparent; }}
-      .block-container {{ max-width: 620px; padding-top: 6vh; }}
-      .boasvindas {{
-        background: linear-gradient(160deg, rgba(6,20,36,0.80), rgba(12,68,124,0.72)),
-          url('{FOTO_INDUSTRIA}') center/cover no-repeat;
-        border-radius: 26px; padding: 64px 56px 52px; text-align: center; min-height: 260px;
-      }}
-      .selo-glass {{ display: inline-block; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.3);
-        color: #EAF3FC; font-size: 13px; padding: 6px 18px; border-radius: 20px; margin-bottom: 22px; }}
-      .boasvindas h1 {{ color: #fff; font-size: clamp(26px, 4vw, 32px); font-weight: 700; margin-bottom: 12px; line-height: 1.2; }}
-      .boasvindas p {{ color: #D9EAFB; font-size: 16px; margin-bottom: 4px; line-height: 1.6; }}
-      .block-container [data-testid="stWidgetLabel"] {{ display: none; }}
-      div[data-testid="stTextInput"] div, div[data-baseweb="input"] {{
-        background: rgba(255,255,255,0.14) !important; border: 1px solid rgba(255,255,255,0.38) !important;
-        border-radius: 14px !important;
-      }}
-      div[data-testid="stTextInput"] input {{
-        background: transparent !important; color: #ffffff !important; text-align: center;
-        font-size: 17px !important; padding: 14px 16px !important; height: auto !important;
-      }}
-      div[data-testid="stTextInput"] input::placeholder {{ color: rgba(255,255,255,0.55) !important; }}
-      .stButton > button {{
-        background: rgba(255,255,255,0.94) !important; color: {AZUL_ESCURO} !important; border: none !important;
-        border-radius: 14px !important; font-weight: 700 !important; font-size: 16px !important; padding: 14px !important;
-      }}
-    </style>
-    <div class="boasvindas">
-      <div class="selo-glass">Soluções Industriais</div>
-      <h1>Bem-vindo(a) ao Validador de Leads</h1>
-      <p>Antes de começar, como você se chama?</p>
-    </div>
-    <div style="height:22px;"></div>
-    """, unsafe_allow_html=True)
-    nome_digitado = st.text_input(
-        "Seu nome", key="f_nome_boas", label_visibility="collapsed", placeholder="Digite seu nome",
-    )
-    if st.button("Continuar", type="primary", use_container_width=True):
-        if nome_digitado.strip():
-            st.session_state["nome_analista"] = nome_digitado.strip()
-            st.query_params["analista"] = nome_digitado.strip()
-            st.rerun()
-        else:
-            st.warning("Digite seu nome para continuar.")
-    st.caption(
-        "Dica: depois de continuar, salve o link da barra de endereço nos favoritos — "
-        "assim o app já abre com o seu nome da próxima vez. Para algo definitivo, "
-        "peça para adicionar ANALISTA_NOME nos Secrets do seu app."
-    )
-    st.stop()
-
-st.session_state.setdefault("nome_analista", nome_analista)
+tema = st.session_state.get("tema", "escuro")
+T = TEMAS_APP[tema]
 
 st.markdown(f"""
 <style>
-  html, body, [data-testid="stAppViewContainer"] {{ background: #0B1622; }}
+  html, body, [data-testid="stAppViewContainer"] {{ background: {T['fundo']}; }}
   [data-testid="stHeader"] {{ background: transparent; }}
 
   .block-container {{ max-width: 1180px; padding-top: 1.4rem; padding-bottom: 3rem; }}
 
   .block-container label, .block-container [data-testid="stWidgetLabel"] p {{
-    color: #D9EAFB !important; font-weight: 600 !important; font-size: 0.82rem !important;
+    color: {T['label']} !important; font-weight: 600 !important; font-size: 0.82rem !important;
   }}
-  .block-container p, .block-container .stMarkdown {{ color: #AFCBE8; }}
+  .block-container p, .block-container .stMarkdown {{ color: {T['texto']}; }}
 
   .topbar-vidro {{ display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 18px; }}
-  .topbar-vidro .marca {{ display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 14px; }}
+  .topbar-vidro .marca {{ display: flex; align-items: center; gap: 10px; color: {T['label']}; font-weight: 700; font-size: 14px; }}
   .topbar-vidro .marca .quad {{
     width: 26px; height: 26px; border-radius: 7px; background: {AZUL};
-    display: flex; align-items: center; justify-content: center; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff;
   }}
-  .saudacao {{ color: #EAF3FC; font-size: 13.5px; }}
-  .saudacao b {{ color: #fff; }}
 
   .hero {{
-    background: linear-gradient(160deg, rgba(6,20,36,0.72), rgba(12,68,124,0.58)),
-      url('{FOTO_INDUSTRIA}') center/cover no-repeat;
+    background: {T['hero_overlay']}, url('{FOTO_INDUSTRIA}') center/cover no-repeat;
     border-radius: 20px; padding: 34px 40px; margin-bottom: 20px;
   }}
   .hero .badge {{
     display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
-    color: #fff; background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.32);
+    color: {T['badge_txt']}; background: {T['badge_bg']}; border: 1px solid {T['badge_borda']};
     padding: 3px 12px; border-radius: 999px; margin-bottom: 12px;
   }}
-  .hero h1 {{ color: #ffffff; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px; }}
-  .hero p {{ color: #D6E8FB; font-size: 0.95rem; line-height: 1.5; max-width: 540px; margin: 0; }}
+  .hero h1 {{ color: {T['hero_titulo']}; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px; }}
+  .hero p {{ color: {T['hero_sub']}; font-size: 0.95rem; line-height: 1.5; max-width: 540px; margin: 0; }}
 
   /* Painéis com borda (formulário e histórico) ganham a estética de vidro */
   div[data-testid="stVerticalBlockBorderWrapper"] {{
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid rgba(255,255,255,0.16) !important;
+    background: {T['painel_bg']} !important;
+    border: 1px solid {T['painel_borda']} !important;
     border-radius: 18px !important;
     backdrop-filter: blur(16px);
   }}
@@ -696,7 +702,7 @@ st.markdown(f"""
      dos campos fica branca. Pinta todo mundo por dentro e deixa só uma borda fora. */
   div[data-testid="stTextInput"], div[data-testid="stTextArea"],
   div[data-testid="stDateInput"] > div, div[data-testid="stSelectbox"] > div {{
-    border: 1px solid rgba(255,255,255,0.26) !important;
+    border: 1px solid {T['input_borda']} !important;
     border-radius: 12px !important;
     overflow: hidden;
   }}
@@ -704,48 +710,48 @@ st.markdown(f"""
   div[data-testid="stDateInput"] div, div[data-testid="stSelectbox"] div,
   div[data-baseweb="input"], div[data-baseweb="base-input"],
   div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
-    background: rgba(255,255,255,0.10) !important;
+    background: {T['input_bg']} !important;
   }}
   div[data-testid="stTextInput"] input, div[data-testid="stTextArea"] textarea,
   div[data-testid="stDateInput"] input, div[data-testid="stSelectbox"] *,
   div[data-baseweb="input"] input, div[data-baseweb="textarea"] textarea {{
-    background: transparent !important; color: #ffffff !important;
+    background: transparent !important; color: {T['input_txt']} !important;
   }}
   div[data-testid="stTextInput"] input::placeholder,
   div[data-testid="stTextArea"] textarea::placeholder {{
-    color: rgba(255,255,255,0.45) !important;
+    color: {T['placeholder']} !important;
   }}
   div[data-testid="stTextInput"]:focus-within, div[data-testid="stTextArea"]:focus-within,
   div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
     border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
   }}
-  /* Ícone de ajuda (?) — some no tema escuro se não forçarmos a cor */
+  /* Ícone de ajuda (?) — some se não forçarmos a cor */
   [data-testid="stTooltipIcon"], [data-testid="stTooltipIcon"] svg,
   [data-testid="stTooltipHoverTarget"] svg {{
-    color: #EAF3FC !important; fill: #EAF3FC !important; opacity: 1 !important;
+    color: {T['texto']} !important; fill: {T['texto']} !important; opacity: 1 !important;
   }}
   div[data-testid="stTooltipContent"] {{
-    background: {AZUL_ESCURO} !important; color: #ffffff !important;
-    border: 1px solid rgba(255,255,255,0.18) !important; border-radius: 10px !important;
+    background: {T['popover_bg']} !important; color: {T['popover_txt']} !important;
+    border: 1px solid rgba(120,140,170,0.25) !important; border-radius: 10px !important;
   }}
   /* Menus flutuantes (opções do selectbox e o calendário do date_input) — no baseweb
      essas caixas têm fundo branco embutido em vários níveis, então zeramos tudo por
-     dentro e pintamos só o nível de fora, escuro, translúcido. */
+     dentro e pintamos só o nível de fora, na cor do tema ativo. */
   div[data-baseweb="popover"] {{
-    background: {AZUL_ESCURO} !important;
-    border: 1px solid rgba(255,255,255,0.18) !important;
+    background: {T['popover_bg']} !important;
+    border: 1px solid rgba(120,140,170,0.25) !important;
     border-radius: 14px !important;
   }}
-  div[data-baseweb="popover"] * {{ background: transparent !important; color: #ffffff !important; }}
+  div[data-baseweb="popover"] * {{ background: transparent !important; color: {T['popover_txt']} !important; }}
   div[data-baseweb="popover"] li:hover,
   div[data-baseweb="popover"] [aria-selected="true"]:not([role="gridcell"]) {{
-    background: rgba(255,255,255,0.14) !important;
+    background: rgba(120,140,170,0.18) !important;
   }}
-  div[data-baseweb="calendar"] {{ background: {AZUL_ESCURO} !important; }}
+  div[data-baseweb="calendar"] {{ background: {T['popover_bg']} !important; }}
   div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] div {{
     background: {AZUL} !important; border-radius: 50% !important; color: #ffffff !important;
   }}
-  div[data-baseweb="calendar"] [role="gridcell"]:hover div {{ background: rgba(255,255,255,0.16) !important; }}
+  div[data-baseweb="calendar"] [role="gridcell"]:hover div {{ background: rgba(120,140,170,0.18) !important; }}
 
   /* Botões em pílula, com feedback de pressão */
   .stButton > button, .stDownloadButton > button {{
@@ -758,41 +764,42 @@ st.markdown(f"""
   }}
   .stButton > button[kind="primary"] p, .stDownloadButton > button p {{ color: {AZUL_ESCURO} !important; }}
   .stButton > button[kind="secondary"] {{
-    background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.24) !important;
+    background: {T['sec_btn_bg']} !important; border: 1px solid {T['sec_btn_borda']} !important;
   }}
-  .stButton > button[kind="secondary"] p {{ color: #EAF3FC !important; }}
+  .stButton > button[kind="secondary"] p {{ color: {T['sec_btn_txt']} !important; }}
 
   /* Métricas como cards de vidro */
   div[data-testid="stMetric"] {{
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid rgba(255,255,255,0.16) !important;
+    background: {T['painel_bg']} !important;
+    border: 1px solid {T['painel_borda']} !important;
     border-radius: 16px; padding: 16px 18px; backdrop-filter: blur(14px);
   }}
-  div[data-testid="stMetric"] label {{ color: #AFCBE8 !important; font-weight: 600 !important; }}
-  div[data-testid="stMetricValue"] {{ color: #ffffff !important; font-weight: 700; }}
-  div[data-testid="stMetricDelta"] {{ color: #AFCBE8 !important; }}
+  div[data-testid="stMetric"] label {{ color: {T['texto']} !important; font-weight: 600 !important; }}
+  div[data-testid="stMetricValue"] {{ color: {T['label']} !important; font-weight: 700; }}
+  div[data-testid="stMetricDelta"] {{ color: {T['texto']} !important; }}
 </style>
 
 <div class="topbar-vidro">
   <div class="marca"><span class="quad">SI</span> Soluções Industriais · Validador de Leads</div>
-  <div class="saudacao">Olá, <b>{nome_analista}</b> 👋</div>
 </div>
 
 <div class="hero">
   <span class="badge">v3 · vidro industrial</span>
   <h1>Nova validação</h1>
-  <p>Informe a chave única do cliente e o período — o app busca sozinho o briefing, os orçamentos e os anúncios no Metabase.</p>
+  <p>Informe a chave única do cliente e o período — a ferramenta busca sozinha o briefing, os orçamentos e os anúncios no Metabase.</p>
 </div>
 """, unsafe_allow_html=True)
 
-col_topo_vazio, col_trocar = st.columns([5, 1])
-with col_trocar:
-    if st.button("Trocar nome", use_container_width=True):
-        st.session_state.pop("nome_analista", None)
-        try:
-            del st.query_params["analista"]
-        except Exception:
-            pass
+col_topo_vazio, col_tema_esc, col_tema_cla = st.columns([5, 1, 1])
+with col_tema_esc:
+    if st.button("🌙 Escuro", use_container_width=True, key="btn_tema_escuro",
+                 type=("primary" if tema == "escuro" else "secondary")):
+        st.session_state["tema"] = "escuro"
+        st.rerun()
+with col_tema_cla:
+    if st.button("☀️ Claro", use_container_width=True, key="btn_tema_claro",
+                 type=("primary" if tema == "claro" else "secondary")):
+        st.session_state["tema"] = "claro"
         st.rerun()
 
 CAMPOS_FORM = ("f_chave", "f_site", "f_obs", "f_modelo")
@@ -807,7 +814,7 @@ with st.container(border=True):
         chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
     with grid_b:
         st.markdown(
-            "<div style='font-weight:600; font-size:0.82rem; color:#D9EAFB; margin-bottom:0.4rem;'>Período</div>",
+            f"<div style='font-weight:600; font-size:0.82rem; color:{T['label']}; margin-bottom:0.4rem;'>Período</div>",
             unsafe_allow_html=True,
         )
         p_a, p_b = st.columns(2)
@@ -849,7 +856,24 @@ with st.container(border=True):
             st.rerun()
     with linha_final_c:
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
-        validar = st.button("Validar leads", type="primary", use_container_width=True)
+        botao_validar_ph = st.empty()
+        with botao_validar_ph.container():
+            validar = st.button("Validar leads", type="primary", use_container_width=True, key="btn_validar")
+
+TOTAL_ETAPAS = 5
+
+
+def marcar_etapa(n, texto):
+    """Substitui a área do botão por um indicador de progresso ao vivo — o
+    analista sempre sabe em que etapa está e quanto falta, e não dá pra
+    clicar duas vezes por engano (o botão literalmente não existe mais ali)."""
+    with botao_validar_ph.container():
+        st.markdown(
+            f"<div style='background: rgba(24,95,165,0.18); border: 1px solid rgba(24,95,165,0.45); "
+            f"color: {T['label']}; text-align: center; padding: 11px 10px; border-radius: 999px; "
+            f"font-size: 0.82rem; font-weight: 700;'>⏳ Etapa {n} de {TOTAL_ETAPAS} · {texto}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def montar_regras():
@@ -889,14 +913,14 @@ if validar:
                    + (" (reserva automática)" if len(ordem_ia) > 1 else ""))
 
     # 1. Briefing (question 286 — por chave única). Nem todo cliente tem briefing cadastrado.
-    with st.spinner("Buscando briefing no Metabase..."):
-        try:
-            csv_briefing = consultar_question(CARD_BRIEFING, [
-                ("chave_unica", chave_unica.strip(), "category"),
-            ])
-        except Exception as e:
-            st.error(f"Erro ao buscar o briefing (question {CARD_BRIEFING}): {e}")
-            st.stop()
+    marcar_etapa(1, "Buscando briefing no Metabase...")
+    try:
+        csv_briefing = consultar_question(CARD_BRIEFING, [
+            ("chave_unica", chave_unica.strip(), "category"),
+        ])
+    except Exception as e:
+        st.error(f"Erro ao buscar o briefing (question {CARD_BRIEFING}): {e}")
+        st.stop()
     texto_briefing = csv_briefing_para_texto(csv_briefing)
     briefing_ausente = not texto_briefing
     if briefing_ausente:
@@ -909,16 +933,16 @@ if validar:
     nome_empresa = extrair_nome_empresa(csv_briefing) or chave_unica.strip()
 
     # 2. Orçamentos (question 47)
-    with st.spinner("Buscando orçamentos no Metabase..."):
-        try:
-            csv_orcamentos = consultar_question(CARD_ORCAMENTOS, [
-                ("chave_unica", chave_unica.strip(), "category"),
-                ("data_inicio", data_inicio.isoformat(), "date/single"),
-                ("data_fim", data_fim.isoformat(), "date/single"),
-            ])
-        except Exception as e:
-            st.error(f"Erro ao buscar os orçamentos (question {CARD_ORCAMENTOS}): {e}")
-            st.stop()
+    marcar_etapa(2, "Buscando orçamentos no Metabase...")
+    try:
+        csv_orcamentos = consultar_question(CARD_ORCAMENTOS, [
+            ("chave_unica", chave_unica.strip(), "category"),
+            ("data_inicio", data_inicio.isoformat(), "date/single"),
+            ("data_fim", data_fim.isoformat(), "date/single"),
+        ])
+    except Exception as e:
+        st.error(f"Erro ao buscar os orçamentos (question {CARD_ORCAMENTOS}): {e}")
+        st.stop()
     linhas = list(csv.reader(io.StringIO(csv_orcamentos)))
     if len(linhas) < 2:
         st.error("Nenhum orçamento encontrado para essa chave única nesse período.")
@@ -931,20 +955,20 @@ if validar:
 
     # 3. Anúncios ativos (question 185 — opcional, não bloqueia se falhar)
     texto_anuncios = ""
-    with st.spinner("Buscando anúncios do cliente no Metabase..."):
-        try:
-            csv_anuncios = consultar_question(CARD_ANUNCIOS, [
-                ("chave_unica", chave_unica.strip(), "category"),
-            ])
-            texto_anuncios = csv_anuncios_para_texto(csv_anuncios)
-        except Exception:
-            st.warning("Não consegui buscar os anúncios (question 185) — prosseguindo sem eles.")
+    marcar_etapa(3, "Buscando anúncios do cliente...")
+    try:
+        csv_anuncios = consultar_question(CARD_ANUNCIOS, [
+            ("chave_unica", chave_unica.strip(), "category"),
+        ])
+        texto_anuncios = csv_anuncios_para_texto(csv_anuncios)
+    except Exception:
+        st.warning("Não consegui buscar os anúncios (question 185) — prosseguindo sem eles.")
 
     # 4. Site do cliente (opcional — essencial quando não há briefing)
     texto_site = ""
+    marcar_etapa(4, "Preparando perfil do cliente...")
     if site.strip():
-        with st.spinner("Lendo o site do cliente..."):
-            texto_site = buscar_site(site.strip())
+        texto_site = buscar_site(site.strip())
         if not texto_site:
             st.warning("Não consegui ler o site informado — prosseguindo sem ele.")
 
@@ -1042,6 +1066,7 @@ if validar:
                 time.sleep(1)
         progresso.empty()
 
+    marcar_etapa(5, "Classificando leads com IA...")
     processar(leads, TAMANHO_LOTE, "Classificando")
     pendentes = [l for l in leads if l["id"] not in classificacoes]
     if pendentes:
@@ -1083,8 +1108,8 @@ if validar:
     base_nome = f"{nome_empresa} - {data_inicio.isoformat()} a {data_fim.isoformat()}"
     dash_html = gerar_dashboard_html(nome_empresa, chave_unica.strip(), periodo_txt, total, contagem,
                                      melhores=melhores, piores=piores, anuncios_ruins=anuncios_ruins,
-                                     analista=st.session_state.get("nome_analista", ""),
-                                     xlsx_bytes=xlsx_bytes, xlsx_nome=f"{base_nome} - Validado.xlsx")
+                                     tema=tema, xlsx_bytes=xlsx_bytes,
+                                     xlsx_nome=f"{base_nome} - Validado.xlsx")
 
     # Resultado fica guardado na sessão: os downloads não somem ao clicar
     st.session_state["resultado"] = {
@@ -1113,6 +1138,8 @@ if validar:
         "dash_nome": f"{base_nome} - Dashboard.html",
     }, xlsx_bytes=xlsx_bytes,
        dash_bytes=st.session_state["resultado"]["dash_bytes"])
+
+    botao_validar_ph.empty()
 
 res = st.session_state.get("resultado")
 if res:
@@ -1165,7 +1192,7 @@ if historico:
             st.caption("Nenhuma validação encontrada para essa chave.")
     cab = st.columns([1.5, 1.6, 1.3, 1.9, 1.1, 0.4])
     for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "")):
-        col.markdown(f"<span style='font-size:0.72rem; color:#B5D4F4; font-weight:600;'>{titulo}</span>", unsafe_allow_html=True)
+        col.markdown(f"<span style='font-size:0.72rem; color:{T['texto']}; font-weight:600;'>{titulo}</span>", unsafe_allow_html=True)
 
     for h in historico[:15]:
         rid = h.get("id", "")
@@ -1204,19 +1231,19 @@ if historico:
                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                    use_container_width=True, key=f"hxlsx_{rid}")
             else:
-                st.caption("Excel não disponível (app reiniciou)")
+                st.caption("Excel não disponível (ferramenta reiniciada)")
         with cg2:
             if dash_salvo:
                 st.download_button("Baixar dashboard", data=dash_salvo,
                                    file_name=sel.get("dash_nome", f"{rid}.html"),
                                    mime="text/html", use_container_width=True, key=f"hdash_{rid}")
             else:
-                st.caption("Dashboard não disponível (app reiniciou)")
+                st.caption("Dashboard não disponível (ferramenta reiniciada)")
 else:
     st.caption("Nenhuma validação registrada ainda. As próximas aparecerão aqui com data, empresa e resultado.")
 
 st.markdown(
-    "<p style='text-align:center; color:#B5D4F4; font-size:0.75rem; margin-top:32px;'>"
+    f"<p style='text-align:center; color:{T['texto']}; font-size:0.75rem; margin-top:32px;'>"
     "Validador de Leads v3 · Soluções Industriais</p>",
     unsafe_allow_html=True,
 )
