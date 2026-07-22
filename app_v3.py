@@ -106,13 +106,17 @@ def carregar_historico():
         return []
 
 
+LIMITE_HISTORICO = 5  # guarda só as últimas consultas, para não acumular disco/memória
+
+
 def salvar_no_historico(registro, xlsx_bytes=None, dash_bytes=None):
     historico = carregar_historico()
     historico.insert(0, registro)
-    historico = historico[:200]
+    mantidos = historico[:LIMITE_HISTORICO]
+    removidos = historico[LIMITE_HISTORICO:]
     try:
         with open(ARQUIVO_HISTORICO, "w", encoding="utf-8") as f:
-            json.dump(historico, f, ensure_ascii=False)
+            json.dump(mantidos, f, ensure_ascii=False)
         os.makedirs(PASTA_RESULTADOS, exist_ok=True)
         rid = registro.get("id", "")
         if rid and xlsx_bytes:
@@ -121,6 +125,15 @@ def salvar_no_historico(registro, xlsx_bytes=None, dash_bytes=None):
         if rid and dash_bytes:
             with open(os.path.join(PASTA_RESULTADOS, f"{rid}.html"), "wb") as f:
                 f.write(dash_bytes)
+        # limpa os arquivos das consultas que saíram do histórico
+        for antigo in removidos:
+            rid_antigo = antigo.get("id", "")
+            if not rid_antigo:
+                continue
+            for ext in (".csv", ".xlsx", ".html"):
+                caminho = os.path.join(PASTA_RESULTADOS, f"{rid_antigo}{ext}")
+                if os.path.exists(caminho):
+                    os.remove(caminho)
     except Exception:
         pass
 
@@ -322,41 +335,43 @@ MODELO_DASH = """<!DOCTYPE html>
       <button class="baixar baixar-imagem" id="btnBaixarImagem" type="button">Baixar imagem</button>
     </div>
   </div>
-  <div class="hero">
-    <div>
-      <h1>__EMPRESA__</h1>
-      <p>chave __CHAVE__ &nbsp;·&nbsp; __PERIODO__ &nbsp;·&nbsp; gerado em __GERADO__</p>
-    </div>
-    <div class="selo"><b>__TOTAL__</b> leads analisados</div>
-  </div>
-
-  <div class="corpo">
-    <div class="kpis">
-      <div class="kpi"><div class="lbl">Total de leads</div><div class="num">__TOTAL__</div><div class="sub">no período</div></div>
-      <div class="kpi"><div class="lbl">Dentro do foco</div><div class="num v">__PCT_DENTRO__%</div><div class="sub">__N_DENTRO__ leads</div></div>
-      <div class="kpi"><div class="lbl">Fora do foco</div><div class="num r">__PCT_FORA__%</div><div class="sub">__N_FORA__ leads</div></div>
-      <div class="kpi"><div class="lbl">Aberto</div><div class="num a">__PCT_ABERTO__%</div><div class="sub">__N_ABERTO__ leads</div></div>
+  <div id="area-captura">
+    <div class="hero">
+      <div>
+        <h1>__EMPRESA__</h1>
+        <p>chave __CHAVE__ &nbsp;·&nbsp; __PERIODO__ &nbsp;·&nbsp; gerado em __GERADO__</p>
+      </div>
+      <div class="selo"><b>__TOTAL__</b> leads analisados</div>
     </div>
 
-    <div class="linha">
-      <div class="painel">
-        <h2>Distribuição por status</h2>
-        <div class="grafico"><canvas id="rosca"></canvas></div>
+    <div class="corpo">
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Total de leads</div><div class="num">__TOTAL__</div><div class="sub">no período</div></div>
+        <div class="kpi"><div class="lbl">Dentro do foco</div><div class="num v">__PCT_DENTRO__%</div><div class="sub">__N_DENTRO__ leads</div></div>
+        <div class="kpi"><div class="lbl">Fora do foco</div><div class="num r">__PCT_FORA__%</div><div class="sub">__N_FORA__ leads</div></div>
+        <div class="kpi"><div class="lbl">Aberto</div><div class="num a">__PCT_ABERTO__%</div><div class="sub">__N_ABERTO__ leads</div></div>
       </div>
-      <div class="painel">
-        <h2>Anúncios que mais geraram leads fora do foco</h2>
-        __LINHAS_ANUNCIOS__
-      </div>
-    </div>
 
-    <div class="linha">
-      <div class="painel">
-        <h2>Melhores leads <span class="pin pin-verde">dentro do foco</span></h2>
-        __LINHAS_MELHORES__
+      <div class="linha">
+        <div class="painel">
+          <h2>Distribuição por status</h2>
+          <div class="grafico"><canvas id="rosca"></canvas></div>
+        </div>
+        <div class="painel">
+          <h2>Anúncios que mais geraram leads fora do foco</h2>
+          __LINHAS_ANUNCIOS__
+        </div>
       </div>
-      <div class="painel">
-        <h2>Piores leads <span class="pin pin-verm">fora do foco</span></h2>
-        __LINHAS_PIORES__
+
+      <div class="linha">
+        <div class="painel">
+          <h2>Melhores leads <span class="pin pin-verde">dentro do foco</span></h2>
+          __LINHAS_MELHORES__
+        </div>
+        <div class="painel">
+          <h2>Piores leads <span class="pin pin-verm">fora do foco</span></h2>
+          __LINHAS_PIORES__
+        </div>
       </div>
     </div>
   </div>
@@ -375,7 +390,7 @@ new Chart(document.getElementById("rosca"), {
 document.getElementById("btnBaixarImagem").addEventListener("click", function () {
   var btn = this;
   btn.textContent = "Gerando imagem...";
-  html2canvas(document.getElementById("tela-captura"), { backgroundColor: "__BG_PAGINA__", scale: 2, useCORS: true })
+  html2canvas(document.getElementById("area-captura"), { backgroundColor: "__BG_TELA__", scale: 2, useCORS: true })
     .then(function (canvas) {
       var link = document.createElement("a");
       link.download = "__NOME_IMAGEM__.jpg";
@@ -893,9 +908,17 @@ with st.container(border=True, key="painel_form"):
         )
     with linha_final_b:
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
-        if st.button("Limpar campos", use_container_width=True):
-            st.session_state["limpar_form"] = True
-            st.rerun()
+        confirmando_limpeza = st.session_state.get("confirmar_limpar", False)
+        st.session_state["confirmar_limpar"] = False  # só fica armado por 1 interação
+        rotulo_limpar = "Confirmar limpeza?" if confirmando_limpeza else "Limpar campos"
+        if st.button(rotulo_limpar, use_container_width=True, key="btn_limpar",
+                      type=("primary" if confirmando_limpeza else "secondary")):
+            if confirmando_limpeza:
+                st.session_state["limpar_form"] = True
+                st.rerun()
+            else:
+                st.session_state["confirmar_limpar"] = True
+                st.rerun()
     with linha_final_c:
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
         botao_validar_ph = st.empty()
@@ -918,6 +941,18 @@ def marcar_etapa(n, texto):
         )
 
 
+def marcar_etapa_erro(n, texto):
+    """Igual ao marcar_etapa, mas em vermelho — deixa claro que parou por erro
+    na etapa N, e não que está apenas travado/lento."""
+    with botao_validar_ph.container():
+        st.markdown(
+            f"<div style='background: rgba(216,90,48,0.16); border: 1px solid rgba(216,90,48,0.55); "
+            f"color: #D85A30; text-align: center; padding: 11px 10px; border-radius: 999px; "
+            f"font-size: 0.82rem; font-weight: 700;'>⚠️ Erro na Etapa {n} · {texto}</div>",
+            unsafe_allow_html=True,
+        )
+
+
 def montar_regras():
     if obs.strip():
         return f"- Observações do projeto (prioridade máxima): {obs.strip()}"
@@ -933,6 +968,9 @@ if validar:
         st.stop()
     if not chave_unica.strip():
         st.error("Preencha a chave única do cliente.")
+        st.stop()
+    if data_inicio > data_fim:
+        st.error("A data de início não pode ser depois da data de fim.")
         st.stop()
 
     # Traduz a escolha do seletor em ordem de provedores + modelo fixo (se houver)
@@ -961,6 +999,7 @@ if validar:
             ("chave_unica", chave_unica.strip(), "category"),
         ])
     except Exception as e:
+        marcar_etapa_erro(1, "falha ao buscar briefing")
         st.error(f"Erro ao buscar o briefing (question {CARD_BRIEFING}): {e}")
         st.stop()
     texto_briefing = csv_briefing_para_texto(csv_briefing)
@@ -983,10 +1022,12 @@ if validar:
             ("data_fim", data_fim.isoformat(), "date/single"),
         ])
     except Exception as e:
+        marcar_etapa_erro(2, "falha ao buscar orçamentos")
         st.error(f"Erro ao buscar os orçamentos (question {CARD_ORCAMENTOS}): {e}")
         st.stop()
     linhas = list(csv.reader(io.StringIO(csv_orcamentos)))
     if len(linhas) < 2:
+        marcar_etapa_erro(2, "nenhum orçamento encontrado")
         st.error("Nenhum orçamento encontrado para essa chave única nesse período.")
         st.stop()
 
@@ -1028,6 +1069,7 @@ if validar:
     perfil = "\n\n".join(partes_perfil)
 
     if not perfil.strip():
+        marcar_etapa_erro(4, "perfil do cliente insuficiente")
         st.error(
             "Não há briefing, site nem observações suficientes para avaliar esse cliente. "
             "Preencha o site ou as observações do projeto e envie de novo."
@@ -1040,6 +1082,7 @@ if validar:
     cabecalho = [c.strip() for c in linhas[0]]
     col_msg = "Mensagem do Cliente"
     if col_msg not in cabecalho:
+        marcar_etapa_erro(4, "coluna de mensagem não encontrada")
         st.error(f'Coluna "{col_msg}" não encontrada no retorno do Metabase. Colunas: {", ".join(cabecalho)}')
         st.stop()
     idx_msg = cabecalho.index(col_msg)
@@ -1091,6 +1134,7 @@ if validar:
                 resultado = chamar_ia(perfil, lote, ordem_ia, modelo_forcado)
             except RuntimeError as e:
                 progresso.empty()
+                marcar_etapa_erro(5, "cota de IA esgotada")
                 st.error(str(e))       # cota diária esgotada: para tudo na hora
                 st.stop()
             except Exception as e:
