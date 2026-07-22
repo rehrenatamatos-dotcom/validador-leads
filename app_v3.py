@@ -726,6 +726,18 @@ st.markdown(f"""
   div[data-testid="stVerticalBlockBorderWrapper"] > div {{
     margin: 0 !important;
   }}
+  /* Reforço específico no painel do formulário (chave "painel_form"): remove
+     qualquer respiro/linha que o próprio Streamlit injete por dentro, pra não
+     sobrar aquela sensação de "moldura dentro da moldura". */
+  .st-key-painel_form {{
+    margin: 0 !important;
+    padding: 0 !important;
+  }}
+  .st-key-painel_form > div,
+  .st-key-painel_form [data-testid="stVerticalBlock"] {{
+    margin: 0 !important;
+    gap: 1rem !important;
+  }}
 
   /* Campos em vidro — cobrimos tanto o div[data-baseweb=...] (usado por alguns
      campos) quanto o wrapper direto do Streamlit (usado por outros), senão parte
@@ -838,7 +850,7 @@ if st.session_state.pop("limpar_form", False):
         st.session_state.pop(k, None)
     st.session_state.pop("resultado", None)
 
-with st.container(border=True):
+with st.container(border=True, key="painel_form"):
     grid_a, grid_b = st.columns(2)
     with grid_a:
         chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
