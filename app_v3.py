@@ -824,6 +824,8 @@ st.markdown(f"""
   div[data-baseweb="input"], div[data-baseweb="base-input"],
   div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
     background: {T['input_bg']} !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
   }}
   div[data-testid="stTextInput"] input, div[data-testid="stTextArea"] textarea,
   div[data-testid="stDateInput"] input, div[data-testid="stSelectbox"] *,
