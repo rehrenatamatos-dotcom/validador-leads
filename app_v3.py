@@ -670,50 +670,61 @@ FOTO_INDUSTRIA = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w
 # Fica só na sessão (não tenta "lembrar" entre acessos diferentes — mantém simples).
 TEMAS_APP = {
     "escuro": {
-        "fundo": "#0B1622",
-        "hero_overlay": "linear-gradient(160deg, rgba(6,20,36,0.72), rgba(12,68,124,0.58))",
-        "label": "#D9EAFB",
-        "texto": "#AFCBE8",
-        "painel_bg": "rgba(255,255,255,0.08)",
-        "painel_borda": "rgba(255,255,255,0.16)",
-        "input_bg": "rgba(255,255,255,0.10)",
-        "input_borda": "rgba(255,255,255,0.26)",
+        "fundo": "#0B141C",
+        "fundo_grad": "radial-gradient(at 0% 0%, rgba(46,123,255,0.16) 0px, transparent 55%), "
+                      "radial-gradient(at 100% 0%, rgba(0,240,255,0.10) 0px, transparent 55%)",
+        "hero_overlay": "linear-gradient(90deg, rgba(11,20,28,0.94), rgba(11,20,28,0.55))",
+        "label": "#EAF3FC",
+        "texto": "#9AA5B8",
+        "painel_bg": "rgba(24,32,40,0.45)",
+        "painel_borda": "rgba(255,255,255,0.08)",
+        "input_bg": "#141C24",
+        "input_borda": "rgba(255,255,255,0.10)",
         "input_txt": "#ffffff",
-        "placeholder": "rgba(255,255,255,0.45)",
-        "popover_bg": AZUL_ESCURO,
-        "popover_txt": "#ffffff",
-        "sec_btn_bg": "rgba(255,255,255,0.08)",
-        "sec_btn_borda": "rgba(255,255,255,0.24)",
-        "sec_btn_txt": "#EAF3FC",
+        "placeholder": "#55698A",
+        "popover_bg": "#101820",
+        "popover_txt": "#EAF3FC",
+        "sec_btn_bg": "transparent",
+        "sec_btn_borda": "transparent",
+        "sec_btn_txt": "#9AA5B8",
         "hero_titulo": "#ffffff",
-        "hero_sub": "#F1F6FC",
-        "badge_bg": "rgba(255,255,255,0.16)",
-        "badge_borda": "rgba(255,255,255,0.32)",
+        "hero_sub": "#B8C6DA",
+        "badge_bg": "rgba(255,255,255,0.06)",
+        "badge_borda": "rgba(255,255,255,0.12)",
         "badge_txt": "#ffffff",
+        "icone": "#7C8CA3",
+        "icone_bg": "rgba(46,123,255,0.14)",
     },
     "claro": {
         "fundo": "#EEF3FA",
-        "hero_overlay": "linear-gradient(160deg, rgba(230,241,251,0.90), rgba(181,212,244,0.72))",
-        "label": "#33475C",
+        "fundo_grad": "radial-gradient(at 0% 0%, rgba(46,123,255,0.08) 0px, transparent 55%), "
+                      "radial-gradient(at 100% 0%, rgba(0,180,255,0.06) 0px, transparent 55%)",
+        "hero_overlay": "linear-gradient(90deg, rgba(230,241,251,0.95), rgba(181,212,244,0.55))",
+        "label": "#0C2036",
         "texto": "#5C7089",
         "painel_bg": "rgba(255,255,255,0.72)",
         "painel_borda": "rgba(255,255,255,0.9)",
-        "input_bg": "rgba(255,255,255,0.75)",
-        "input_borda": "rgba(24,95,165,0.20)",
+        "input_bg": "#ffffff",
+        "input_borda": "rgba(24,95,165,0.16)",
         "input_txt": "#0C2036",
         "placeholder": "#8CA0B8",
         "popover_bg": "#FFFFFF",
         "popover_txt": "#0C2036",
-        "sec_btn_bg": "rgba(255,255,255,0.60)",
-        "sec_btn_borda": "rgba(24,95,165,0.20)",
-        "sec_btn_txt": AZUL_ESCURO,
+        "sec_btn_bg": "transparent",
+        "sec_btn_borda": "transparent",
+        "sec_btn_txt": "#0C447C",
         "hero_titulo": "#0C2036",
         "hero_sub": "#33475C",
-        "badge_bg": "rgba(12,32,54,0.10)",
-        "badge_borda": "rgba(12,32,54,0.22)",
-        "badge_txt": "#0C2036",
+        "badge_bg": "rgba(255,255,255,0.7)",
+        "badge_borda": "rgba(24,95,165,0.18)",
+        "badge_txt": "#0C447C",
+        "icone": "#7C93AC",
+        "icone_bg": "rgba(46,123,255,0.12)",
     },
 }
+
+# Cores do gradiente neon — iguais nos dois temas (é a assinatura visual nova).
+NEON_1, NEON_2 = "#2E7BFF", "#00CFFF"
 
 tema = st.session_state.get("tema", "escuro")
 T = TEMAS_APP[tema]
@@ -723,10 +734,16 @@ LOGO_SI = svg_logo_si(T['badge_txt'], T['fundo'])
 
 st.markdown(f"""
 <style>
-  html, body, [data-testid="stAppViewContainer"] {{ background: {T['fundo']}; }}
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Geist:wght@400;500&family=JetBrains+Mono:wght@500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1');
+
+  html, body, [data-testid="stAppViewContainer"] {{
+    background-color: {T['fundo']};
+    background-image: {T['fundo_grad']};
+  }}
   [data-testid="stHeader"] {{ background: transparent; }}
 
-  .block-container {{ max-width: 1180px; padding-top: 1.4rem; padding-bottom: 3rem; }}
+  .block-container {{ max-width: 1180px; padding-top: 1.4rem; padding-bottom: 3rem; font-family: 'Geist', sans-serif; }}
 
   .block-container label, .block-container [data-testid="stWidgetLabel"] p {{
     color: {T['label']} !important; font-weight: 600 !important; font-size: 0.82rem !important;
@@ -734,7 +751,10 @@ st.markdown(f"""
   .block-container p, .block-container .stMarkdown {{ color: {T['texto']}; }}
 
   .topbar-vidro {{ display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 18px; }}
-  .topbar-vidro .marca {{ display: flex; align-items: center; gap: 10px; color: {T['label']}; font-weight: 700; font-size: 14px; }}
+  .topbar-vidro .marca {{
+    display: flex; align-items: center; gap: 10px; color: {T['label']};
+    font-family: 'Sora', sans-serif; font-weight: 700; font-size: 14px;
+  }}
   .topbar-vidro .marca .logo-si {{ flex-shrink: 0; }}
 
   .hero {{
@@ -742,12 +762,26 @@ st.markdown(f"""
     border-radius: 20px; padding: 34px 40px; margin-bottom: 20px;
   }}
   .hero .badge {{
-    display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+    display: inline-flex; align-items: center; gap: 7px; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; font-weight: 500; letter-spacing: 0.02em;
     color: {T['badge_txt']}; background: {T['badge_bg']}; border: 1px solid {T['badge_borda']};
-    padding: 3px 12px; border-radius: 999px; margin-bottom: 12px;
+    padding: 4px 13px; border-radius: 999px; margin-bottom: 12px;
   }}
-  .hero h1 {{ color: {T['hero_titulo']}; font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px; }}
+  .hero .badge::before {{
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: {NEON_1}; flex-shrink: 0;
+  }}
+  .hero h1 {{
+    color: {T['hero_titulo']}; font-family: 'Sora', sans-serif;
+    font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin: 0 0 8px;
+  }}
   .hero p {{ color: {T['hero_sub']}; font-size: 0.95rem; line-height: 1.5; max-width: 540px; margin: 0; }}
+
+  .painel-titulo {{ display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }}
+  .painel-titulo .icone-titulo {{
+    width: 36px; height: 36px; border-radius: 10px; background: {T['icone_bg']}; color: {NEON_1};
+    display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+  }}
+  .painel-titulo h2 {{ font-family: 'Sora', sans-serif; font-size: 1.05rem; font-weight: 700; }}
 
   /* Painéis com borda (formulário e histórico) ganham a estética de vidro.
      Zeramos margem/sombra extra do próprio Streamlit para não sobrar aquela
@@ -802,7 +836,7 @@ st.markdown(f"""
   }}
   div[data-testid="stTextInput"]:focus-within, div[data-testid="stTextArea"]:focus-within,
   div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
-    border-color: {AZUL} !important; box-shadow: 0 0 0 3px rgba(24,95,165,0.30) !important;
+    border-color: {NEON_1} !important; box-shadow: 0 0 0 3px rgba(46,123,255,0.25) !important;
   }}
   /* Ícone de ajuda (?) — some se não forçarmos a cor */
   [data-testid="stTooltipIcon"], [data-testid="stTooltipIcon"] svg,
@@ -828,24 +862,45 @@ st.markdown(f"""
   }}
   div[data-baseweb="calendar"] {{ background: {T['popover_bg']} !important; }}
   div[data-baseweb="calendar"] [role="gridcell"][aria-selected="true"] div {{
-    background: {AZUL} !important; border-radius: 50% !important; color: #ffffff !important;
+    background: {NEON_1} !important; border-radius: 50% !important; color: #ffffff !important;
   }}
   div[data-baseweb="calendar"] [role="gridcell"]:hover div {{ background: rgba(120,140,170,0.18) !important; }}
 
   /* Botões em pílula, com feedback de pressão */
   .stButton > button, .stDownloadButton > button {{
     border-radius: 999px !important;
-    transition: transform 140ms ease-out, background 160ms ease-out;
+    transition: transform 140ms ease-out, box-shadow 160ms ease-out;
   }}
   .stButton > button:active, .stDownloadButton > button:active {{ transform: scale(0.97); }}
-  .stButton > button[kind="primary"], .stDownloadButton > button {{
+  .stButton > button[kind="primary"] {{
+    background: linear-gradient(90deg, {NEON_1}, {NEON_2}) !important; border: none !important;
+    font-weight: 700 !important; box-shadow: 0 0 18px rgba(46,123,255,0.40) !important;
+  }}
+  .stButton > button[kind="primary"]:hover {{ box-shadow: 0 0 26px rgba(46,123,255,0.60) !important; }}
+  .stButton > button[kind="primary"] p {{ color: #ffffff !important; }}
+  .stDownloadButton > button {{
     background: rgba(255,255,255,0.94) !important; border: none !important; font-weight: 700 !important;
   }}
-  .stButton > button[kind="primary"] p, .stDownloadButton > button p {{ color: {AZUL_ESCURO} !important; }}
+  .stDownloadButton > button p {{ color: {AZUL_ESCURO} !important; }}
   .stButton > button[kind="secondary"] {{
     background: {T['sec_btn_bg']} !important; border: 1px solid {T['sec_btn_borda']} !important;
   }}
+  .stButton > button[kind="secondary"]:hover {{ background: {T['painel_bg']} !important; }}
   .stButton > button[kind="secondary"] p {{ color: {T['sec_btn_txt']} !important; }}
+
+  /* Ícones dentro dos campos (visual só — não interferem no clique/digitação) */
+  .st-key-f_chave, .st-key-f_site, .st-key-f_obs,
+  .st-key-f_data_inicio, .st-key-f_data_fim {{ position: relative; }}
+  .st-key-f_chave::after, .st-key-f_site::after, .st-key-f_obs::after,
+  .st-key-f_data_inicio::after, .st-key-f_data_fim::after {{
+    font-family: 'Material Symbols Outlined'; font-size: 19px; color: {T['icone']};
+    position: absolute; right: 14px; bottom: 11px; pointer-events: none;
+  }}
+  .st-key-f_chave::after {{ content: "fingerprint"; }}
+  .st-key-f_site::after {{ content: "language"; }}
+  .st-key-f_obs::after {{ content: "sticky_note_2"; bottom: auto; top: 34px; }}
+  .st-key-f_data_inicio::after {{ content: "calendar_today"; font-size: 16px; }}
+  .st-key-f_data_fim::after {{ content: "event_available"; font-size: 16px; }}
 
   /* Métricas como cards de vidro */
   div[data-testid="stMetric"] {{
@@ -888,6 +943,13 @@ if st.session_state.pop("limpar_form", False):
     st.session_state.pop("resultado", None)
 
 with st.container(border=True, key="painel_form"):
+    st.markdown(
+        f"<div class='painel-titulo'>"
+        f"<span class='icone-titulo material-symbols-outlined'>fact_check</span>"
+        f"<h2 style='margin:0; color:{T['label']};'>Configurações de validação</h2>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
     grid_a, grid_b = st.columns(2)
     with grid_a:
         chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
@@ -899,11 +961,13 @@ with st.container(border=True, key="painel_form"):
         p_a, p_b = st.columns(2)
         with p_a:
             data_inicio = st.date_input(
-                "Início", value=date.today() - timedelta(days=90), format="DD/MM/YYYY", label_visibility="collapsed",
+                "Início", value=date.today() - timedelta(days=90), format="DD/MM/YYYY",
+                label_visibility="collapsed", key="f_data_inicio",
             )
         with p_b:
             data_fim = st.date_input(
-                "Fim", value=date.today(), format="DD/MM/YYYY", label_visibility="collapsed",
+                "Fim", value=date.today(), format="DD/MM/YYYY",
+                label_visibility="collapsed", key="f_data_fim",
             )
 
     grid_c, grid_d = st.columns(2)
@@ -945,7 +1009,7 @@ with st.container(border=True, key="painel_form"):
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
         botao_validar_ph = st.empty()
         with botao_validar_ph.container():
-            validar = st.button("Validar leads", type="primary", use_container_width=True, key="btn_validar")
+            validar = st.button("⚡ Validar leads", type="primary", use_container_width=True, key="btn_validar")
 
 TOTAL_ETAPAS = 5
 
@@ -956,7 +1020,7 @@ def marcar_etapa(n, texto):
     clicar duas vezes por engano (o botão literalmente não existe mais ali)."""
     with botao_validar_ph.container():
         st.markdown(
-            f"<div style='background: rgba(24,95,165,0.18); border: 1px solid rgba(24,95,165,0.45); "
+            f"<div style='background: rgba(46,123,255,0.16); border: 1px solid rgba(46,123,255,0.45); "
             f"color: {T['label']}; text-align: center; padding: 11px 10px; border-radius: 999px; "
             f"font-size: 0.82rem; font-weight: 700;'>⏳ Etapa {n} de {TOTAL_ETAPAS} · {texto}</div>",
             unsafe_allow_html=True,
