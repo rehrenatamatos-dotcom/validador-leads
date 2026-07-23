@@ -670,7 +670,7 @@ FOTO_INDUSTRIA = "https://images.unsplash.com/photo-1513828583688-c52646db42da?w
 # Fica só na sessão (não tenta "lembrar" entre acessos diferentes — mantém simples).
 TEMAS_APP = {
     "escuro": {
-        "fundo": "#0B141C",
+        "fundo": "#1B2C3D",
         "fundo_grad": "radial-gradient(at 0% 0%, rgba(46,123,255,0.16) 0px, transparent 55%), "
                       "radial-gradient(at 100% 0%, rgba(0,240,255,0.10) 0px, transparent 55%)",
         "hero_overlay": "linear-gradient(90deg, rgba(11,20,28,0.94), rgba(11,20,28,0.55))",
@@ -881,9 +881,10 @@ st.markdown(f"""
   .stButton > button[kind="primary"]:hover {{ box-shadow: 0 0 26px rgba(46,123,255,0.60) !important; }}
   .stButton > button[kind="primary"] p {{ color: #ffffff !important; }}
   .stDownloadButton > button {{
-    background: rgba(255,255,255,0.94) !important; border: none !important; font-weight: 700 !important;
+    background: linear-gradient(135deg, rgba(46,123,255,0.30), rgba(0,207,255,0.30)) !important;
+    border: 1px solid rgba(46,123,255,0.35) !important; font-weight: 700 !important;
   }}
-  .stDownloadButton > button p {{ color: {AZUL_ESCURO} !important; }}
+  .stDownloadButton > button p {{ color: #ffffff !important; }}
   .stButton > button[kind="secondary"] {{
     background: {T['sec_btn_bg']} !important; border: 1px solid {T['sec_btn_borda']} !important;
   }}
