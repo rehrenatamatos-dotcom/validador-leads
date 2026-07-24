@@ -679,6 +679,7 @@ TEMAS_APP = {
         "painel_bg": "rgba(24,32,40,0.45)",
         "painel_borda": "rgba(255,255,255,0.08)",
         "input_bg": "#141C24",
+        "input_vidro": "rgba(12, 24, 36, 0.58)",
         "input_borda": "rgba(255,255,255,0.10)",
         "input_txt": "#ffffff",
         "placeholder": "#55698A",
@@ -694,6 +695,9 @@ TEMAS_APP = {
         "badge_txt": "#ffffff",
         "icone": "#7C8CA3",
         "icone_bg": "rgba(46,123,255,0.14)",
+        "acao_primaria": "#3B6D96",
+        "acao_primaria_hover": "#315D82",
+        "foco": "rgba(109, 173, 225, 0.34)",
     },
     "claro": {
         "fundo": "#EEF3FA",
@@ -705,6 +709,7 @@ TEMAS_APP = {
         "painel_bg": "rgba(255,255,255,0.72)",
         "painel_borda": "rgba(255,255,255,0.9)",
         "input_bg": "#ffffff",
+        "input_vidro": "rgba(255, 255, 255, 0.58)",
         "input_borda": "rgba(24,95,165,0.16)",
         "input_txt": "#0C2036",
         "placeholder": "#8CA0B8",
@@ -720,6 +725,9 @@ TEMAS_APP = {
         "badge_txt": "#0C447C",
         "icone": "#7C93AC",
         "icone_bg": "rgba(46,123,255,0.12)",
+        "acao_primaria": "#3B78B4",
+        "acao_primaria_hover": "#2F659A",
+        "foco": "rgba(59, 120, 180, 0.26)",
     },
 }
 
@@ -788,11 +796,12 @@ st.markdown(f"""
      "moldura dentro da moldura" — só uma borda visível, a do painel mesmo. */
   div[data-testid="stVerticalBlockBorderWrapper"] {{
     background: {T['painel_bg']} !important;
-    border: 1px solid {T['painel_borda']} !important;
+    border: none !important;
     border-radius: 18px !important;
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
     margin: 0 !important;
-    box-shadow: none !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 32px rgba(10,25,40,0.08) !important;
   }}
   div[data-testid="stVerticalBlockBorderWrapper"] > div {{
     margin: 0 !important;
@@ -815,15 +824,19 @@ st.markdown(f"""
      dos campos fica branca. Pinta todo mundo por dentro e deixa só uma borda fora. */
   div[data-testid="stTextInput"], div[data-testid="stTextArea"],
   div[data-testid="stDateInput"] > div, div[data-testid="stSelectbox"] > div {{
-    border: 1px solid {T['input_borda']} !important;
+    background: {T['input_vidro']} !important;
+    border: none !important;
     border-radius: 12px !important;
     overflow: hidden;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 18px rgba(10,25,40,0.06);
   }}
   div[data-testid="stTextInput"] div, div[data-testid="stTextArea"] div,
   div[data-testid="stDateInput"] div, div[data-testid="stSelectbox"] div,
   div[data-baseweb="input"], div[data-baseweb="base-input"],
   div[data-baseweb="textarea"], div[data-baseweb="select"] > div {{
-    background: {T['input_bg']} !important;
+    background: transparent !important;
     border-color: transparent !important;
     box-shadow: none !important;
   }}
@@ -838,7 +851,8 @@ st.markdown(f"""
   }}
   div[data-testid="stTextInput"]:focus-within, div[data-testid="stTextArea"]:focus-within,
   div[data-baseweb="input"]:focus-within, div[data-baseweb="textarea"]:focus-within {{
-    border-color: {NEON_1} !important; box-shadow: 0 0 0 3px rgba(46,123,255,0.25) !important;
+    border-color: transparent !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 3px {T['foco']} !important;
   }}
   /* Ícone de ajuda (?) — some se não forçarmos a cor */
   [data-testid="stTooltipIcon"], [data-testid="stTooltipIcon"] svg,
@@ -868,28 +882,41 @@ st.markdown(f"""
   }}
   div[data-baseweb="calendar"] [role="gridcell"]:hover div {{ background: rgba(120,140,170,0.18) !important; }}
 
-  /* Botões em pílula, com feedback de pressão */
+  /* Botões com cor sólida e contraste alto. */
   .stButton > button, .stDownloadButton > button {{
-    border-radius: 999px !important;
-    transition: transform 140ms ease-out, box-shadow 160ms ease-out;
+    border-radius: 10px !important;
+    transition: background 140ms ease-out, transform 140ms ease-out;
   }}
   .stButton > button:active, .stDownloadButton > button:active {{ transform: scale(0.97); }}
   .stButton > button[kind="primary"] {{
-    background: linear-gradient(90deg, {NEON_1}, {NEON_2}) !important; border: none !important;
-    font-weight: 700 !important; box-shadow: 0 0 18px rgba(46,123,255,0.40) !important;
+    background: {T['acao_primaria']} !important; border: 1px solid {T['acao_primaria']} !important;
+    font-weight: 700 !important; box-shadow: none !important;
   }}
-  .stButton > button[kind="primary"]:hover {{ box-shadow: 0 0 26px rgba(46,123,255,0.60) !important; }}
+  .stButton > button[kind="primary"]:hover {{ background: {T['acao_primaria_hover']} !important; box-shadow: none !important; }}
   .stButton > button[kind="primary"] p {{ color: #ffffff !important; }}
   .stDownloadButton > button {{
-    background: linear-gradient(135deg, rgba(46,123,255,0.30), rgba(0,207,255,0.30)) !important;
-    border: 1px solid rgba(46,123,255,0.35) !important; font-weight: 700 !important;
+    background: {T['input_vidro']} !important;
+    border: none !important; font-weight: 700 !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), 0 6px 18px rgba(10,25,40,0.06) !important;
   }}
-  .stDownloadButton > button p {{ color: #ffffff !important; }}
+  .stDownloadButton > button:hover {{ background: {T['painel_bg']} !important; }}
+  .stDownloadButton > button p {{ color: {T['sec_btn_txt']} !important; }}
   .stButton > button[kind="secondary"] {{
     background: {T['sec_btn_bg']} !important; border: 1px solid {T['sec_btn_borda']} !important;
   }}
   .stButton > button[kind="secondary"]:hover {{ background: {T['painel_bg']} !important; }}
   .stButton > button[kind="secondary"] p {{ color: {T['sec_btn_txt']} !important; }}
+  .st-key-btn_tema_escuro .stButton > button, .st-key-btn_tema_claro .stButton > button {{
+    min-height: 38px; font-size: 0.82rem !important;
+  }}
+  .st-key-btn_tema_escuro .stButton > button[kind="secondary"],
+  .st-key-btn_tema_claro .stButton > button[kind="secondary"] {{
+    background: {T['input_vidro']} !important; border-color: transparent !important;
+  }}
+  [class*="st-key-conf_"] .stButton > button {{
+    background: #C73B3B !important; border-color: #C73B3B !important;
+  }}
+  [class*="st-key-conf_"] .stButton > button:hover {{ background: #A92F2F !important; }}
 
   /* Ícones dentro dos campos (visual só — não interferem no clique/digitação) */
   .st-key-f_chave, .st-key-f_site, .st-key-f_obs,
@@ -953,9 +980,13 @@ with st.container(border=True, key="painel_form"):
         f"</div>",
         unsafe_allow_html=True,
     )
+    st.caption("Preencha os campos obrigatórios (*) para iniciar a validação.")
     grid_a, grid_b = st.columns(2)
     with grid_a:
-        chave_unica = st.text_input("Chave única do cliente", placeholder="Ex.: 12-34567-1", key="f_chave")
+        chave_unica = st.text_input(
+            "Chave única do cliente *", placeholder="Ex.: 12-34567-1", key="f_chave",
+            help="Identificador usado para localizar o briefing, os orçamentos e os anúncios do cliente.",
+        )
     with grid_b:
         st.markdown(
             f"<div style='font-weight:600; font-size:0.82rem; color:{T['label']}; margin-bottom:0.4rem;'>Período</div>",
@@ -976,20 +1007,22 @@ with st.container(border=True, key="painel_form"):
     grid_c, grid_d = st.columns(2)
     with grid_c:
         site = st.text_input(
-            "Site do cliente (opcional, mas importante quando não há briefing cadastrado)",
+            "Site do cliente (opcional)",
             placeholder="https://www.sitedocliente.com.br", key="f_site",
+            help="Importante quando não houver briefing cadastrado para o cliente.",
         )
     with grid_d:
         obs = st.text_area(
-            "Observações (opcional, mas importante quando não há briefing cadastrado)",
+            "Observações (opcional)",
             placeholder="Ex.: cliente só vende máquinas (serviço, assistência, aluguel e peças = fora do foco).",
             height=90, key="f_obs",
+            help="Use para informar restrições de escopo, principalmente se não existir briefing.",
         )
 
     linha_final_a, linha_final_b, linha_final_c = st.columns([2, 1, 1])
     with linha_final_a:
         modelo_escolha = st.selectbox(
-            "Modelo de IA",
+            "Processamento",
             list(MODELOS_ESCOLHA.keys()),
             key="f_modelo",
             help="Rápido = resposta mais veloz, boa para o dia a dia. Preciso = mais lento, "
@@ -998,9 +1031,9 @@ with st.container(border=True, key="painel_form"):
     with linha_final_b:
         st.markdown("<div style='height:1.85rem;'></div>", unsafe_allow_html=True)
         confirmando_limpeza = st.session_state.get("confirmar_limpar", False)
-        rotulo_limpar = "Confirmar limpeza?" if confirmando_limpeza else "Limpar campos"
+        rotulo_limpar = "Confirmar limpeza" if confirmando_limpeza else "Limpar campos"
         if st.button(rotulo_limpar, use_container_width=True, key="btn_limpar",
-                      type=("primary" if confirmando_limpeza else "secondary")):
+                      type="secondary"):
             if confirmando_limpeza:
                 st.session_state["confirmar_limpar"] = False
                 st.session_state["limpar_form"] = True
@@ -1013,6 +1046,7 @@ with st.container(border=True, key="painel_form"):
         botao_validar_ph = st.empty()
         with botao_validar_ph.container():
             validar = st.button("⚡ Validar leads", type="primary", use_container_width=True, key="btn_validar")
+        st.caption("A análise pode levar alguns minutos. Não feche esta página durante o processamento.")
 
 TOTAL_ETAPAS = 5
 
@@ -1322,6 +1356,7 @@ res = st.session_state.get("resultado")
 if res:
     total, contagem = res["total"], res["contagem"]
     st.success(f"Validação concluída — {total} leads processados! ({res['empresa']})")
+    st.caption("Revise o resumo abaixo e baixe o Excel para consultar a classificação individual de cada lead.")
     c1, c2, c3 = st.columns(3)
     c1.metric("Dentro do foco", f"{contagem['Dentro do foco']/total:.0%}", f"{contagem['Dentro do foco']} leads", delta_color="off")
     c2.metric("Fora do foco", f"{contagem['Fora do foco']/total:.0%}", f"{contagem['Fora do foco']} leads", delta_color="off")
@@ -1357,19 +1392,23 @@ def dialogo_excluir(rid, rotulo):
 st.markdown("<p style='font-weight:600; margin-top:32px;'>Histórico de validações</p>", unsafe_allow_html=True)
 historico = carregar_historico()
 if historico:
-    filtro_chave = st.text_input(
-        "Buscar por chave única",
-        placeholder="Digite a chave para filtrar o histórico (ex.: 12-34567-1)",
+    filtro_historico = st.text_input(
+        "Buscar no histórico",
+        placeholder="Digite uma empresa ou chave única (ex.: Metalúrgica ou 12-34567-1)",
         key="f_filtro_hist",
     )
-    if filtro_chave.strip():
-        alvo = filtro_chave.strip().lower()
-        historico = [h for h in historico if alvo in str(h.get("Chave única", "")).lower()]
+    if filtro_historico.strip():
+        alvo = filtro_historico.strip().lower()
+        historico = [
+            h for h in historico
+            if alvo in str(h.get("Chave única", "")).lower()
+            or alvo in str(h.get("Empresa", "")).lower()
+        ]
         if not historico:
-            st.caption("Nenhuma validação encontrada para essa chave.")
-    colunas_hist = [1.3, 1.4, 1.1, 1.6, 1.0, 0.4, 0.4, 0.4]
+            st.caption("Nenhuma validação encontrada para essa empresa ou chave.")
+    colunas_hist = [1.2, 1.35, 1.05, 1.45, 1.0, 0.68, 0.68, 0.35]
     cab = st.columns(colunas_hist)
-    for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "", "", "")):
+    for col, titulo in zip(cab, ("Data", "Empresa", "Chave", "Período", "Leads (D/F/A)", "Excel", "Painel", "")):
         col.markdown(f"<span style='font-size:0.72rem; color:{T['texto']}; font-weight:600;'>{titulo}</span>", unsafe_allow_html=True)
 
     for h in historico:
@@ -1387,17 +1426,17 @@ if historico:
                 f"<span style='color:#B4830A;'>{h.get('Aberto', '')}</span>)</span>",
                 unsafe_allow_html=True,
             )
-            # download direto na própria linha — sem precisar abrir um seletor à parte
+            # Downloads e exclusão ficam explícitos para reduzir ambiguidade no histórico.
             xlsx_salvo = ler_resultado_salvo(rid, ".xlsx") if rid else None
             dash_salvo = ler_resultado_salvo(rid, ".html") if rid else None
             if xlsx_salvo:
-                c[5].download_button("⬇︎", data=xlsx_salvo, file_name=h.get("xlsx_nome", f"{rid}.xlsx"),
+                c[5].download_button("Excel", data=xlsx_salvo, file_name=h.get("xlsx_nome", f"{rid}.xlsx"),
                                       mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                       use_container_width=True, key=f"hxlsx_{rid}", help="Baixar Excel")
             else:
                 c[5].caption("—")
             if dash_salvo:
-                c[6].download_button("🖥", data=dash_salvo, file_name=h.get("dash_nome", f"{rid}.html"),
+                c[6].download_button("Painel", data=dash_salvo, file_name=h.get("dash_nome", f"{rid}.html"),
                                       mime="text/html", use_container_width=True, key=f"hdash_{rid}",
                                       help="Baixar dashboard")
             else:
