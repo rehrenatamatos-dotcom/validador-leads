@@ -65,9 +65,9 @@ def normalizar_data_orcamento(texto):
     except Exception:
         return ""
 
-# Provedores gratuitos (APIs compatíveis com OpenAI). O app escolhe automaticamente:
-# se houver CEREBRAS_API_KEY nos Secrets usa Cerebras (cota diária bem maior);
-# senão usa Groq. Um serve de reserva do outro quando ambas as chaves existem.
+# Provedores gratuitos (APIs compatíveis com OpenAI). O app escolhe automaticamente,
+# na ordem: Cerebras (cota diária bem maior) → Groq → SambaNova → Gemini. Cada chave
+# configurada nos Secrets vira reserva das outras — só precisa de uma pra funcionar.
 # Cada provedor tem uma LISTA de modelos candidatos. Se um estiver descontinuado
 # (404), o app tenta o próximo automaticamente — nunca quebra por um nome só.
 # Modelos confirmados ATIVOS (consultados na doc oficial de cada provedor, jul/2026).
@@ -84,6 +84,16 @@ PROVEDORES = {
         "modelos": ["openai/gpt-oss-20b", "llama-3.1-8b-instant",
                     "llama-3.3-70b-versatile", "openai/gpt-oss-120b"],
     },
+    "sambanova": {
+        "url": "https://api.sambanova.ai/v1/chat/completions",
+        "chave": "SAMBANOVA_API_KEY",
+        "modelos": ["Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-8B-Instruct", "Qwen2.5-72B-Instruct"],
+    },
+    "gemini": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "chave": "GEMINI_API_KEY",
+        "modelos": ["gemini-2.0-flash", "gemini-1.5-flash"],
+    },
 }
 
 # Opções do seletor de IA na tela. Cada opção define (provedor, modelo preferido).
@@ -96,6 +106,8 @@ MODELOS_ESCOLHA = {
     "Equilíbrio · Cerebras Llama 3.3 70B": ("cerebras", "llama-3.3-70b"),
     "Equilíbrio · Groq Llama 3.3 70B": ("groq", "llama-3.3-70b-versatile"),
     "Preciso · Groq GPT-OSS 120B": ("groq", "openai/gpt-oss-120b"),
+    "Equilíbrio · SambaNova Llama 3.3 70B": ("sambanova", "Meta-Llama-3.3-70B-Instruct"),
+    "Rápido · Gemini 2.0 Flash": ("gemini", "gemini-2.0-flash"),
 }
 
 TAMANHO_LOTE = 20
@@ -122,21 +134,25 @@ ANTES DE CLASSIFICAR: identifique no perfil O QUE o cliente vende — um PRODUTO
 
 Critérios (avalie em conjunto, nenhum sozinho decide):
 1. Produto vs. serviço. Se o cliente VENDE MÁQUINAS e o lead quer CONTRATAR o serviço (ex. "preciso cortar 50 chapas", "orçamento para corte de peças"), é "Fora do foco" — mesmo que a mensagem seja tecnicamente detalhada (material, medidas, CNPJ). Especificidade técnica NÃO transforma um pedido de serviço em lead de máquina. O inverso também vale (cliente presta serviço e lead quer comprar máquina). Salvo se o perfil disser que o cliente atende ambos.
-2. Modalidade compatível. Pedidos de assistência técnica/manutenção, aluguel de máquina, ou peças/componentes avulsos são "Fora do foco" quando o cliente vende equipamentos novos — salvo indicação contrária no perfil ou nas regras específicas.
-3. Material/produto compatível com o portfólio do cliente. Se o cliente trabalha metal e o lead pede madeira/tecido/PVC, é forte sinal de "Fora do foco", mesmo que o serviço seja o mesmo.
-4. B2B vs. uso pessoal. Pedidos claramente domésticos/pontuais de pessoa física pesam para "Fora do foco" quando o cliente atende indústria/B2B.
-5. Especificidade técnica. Medidas, normas, quantidade definida, nome de empresa/CNPJ pesam para "Dentro do foco" — mas SOMENTE quando o pedido é da modalidade certa (ver critério 1).
-6. Sinais de ruído. Teste interno (QA, e-mails de qualidade), spam, concorrente se oferecendo, marca/modelo que o cliente não vende, ou lead avisando que já comprou em outro lugar = "Fora do foco" independente do produto.
-7. Mensagem inteiramente em inglês. Se a mensagem do lead estiver totalmente escrita em inglês (ex. "Dear Sir/Madam, we are interested in your products..."), classifique como "Fora do foco" — são tipicamente bots ou contatos genéricos internacionais fora do público-alvo. Isso vale mesmo que a mensagem pareça pedir um produto do cliente. NÃO se aplica a mensagens em português que contenham apenas termos técnicos ou nomes de produto em inglês (ex. "máquina laser CO2", "new laser nli390") — essas continuam sendo avaliadas normalmente.
-8. Regras específicas do cliente (se fornecidas no perfil) têm prioridade sobre os critérios gerais.
+2. Anúncio do cliente (vínculo da plataforma). No "Contexto extra" de cada lead vem o campo "Anúncio do cliente" — é o anúncio do PRÓPRIO cliente ao qual a plataforma vinculou aquele lead, ou seja, uma pista de categoria de produto, não prova sozinha de interesse. Use assim:
+   a) Se a mensagem NOMEIA um produto/pedido específico e ele é da mesma família do "Anúncio do cliente" (mesmo com termo diferente — ex.: mensagem diz "rosca helicoidal" e o anúncio do cliente é "rosca transportadora": mesma família, o cliente trabalha com isso), isso reforça "Dentro do foco".
+   b) Se a mensagem é vaga e NÃO nomeia nenhum produto (ex.: "quero comprar", "gostaria de saber o valor", "me manda os dados"), o "Anúncio do cliente" sozinho NÃO decide — continua "Aberto", mesmo estando vinculado a um anúncio do cliente.
+   c) Ignore o campo "anúncio de origem do Orçamento" (e "satélite de origem") para esta avaliação — eles são o site/anúncio de terceiros onde o lead teve origem antes de ser casado com o cliente, não o que o cliente vende.
+3. Modalidade compatível. Pedidos de assistência técnica/manutenção, aluguel de máquina, ou peças/componentes avulsos são "Fora do foco" quando o cliente vende equipamentos novos — salvo indicação contrária no perfil ou nas regras específicas.
+4. Material/produto compatível com o portfólio do cliente. Se o cliente trabalha metal e o lead pede madeira/tecido/PVC, é forte sinal de "Fora do foco", mesmo que o serviço seja o mesmo.
+5. B2B vs. uso pessoal. Pedidos claramente domésticos/pontuais de pessoa física pesam para "Fora do foco" quando o cliente atende indústria/B2B.
+6. Especificidade técnica. Medidas, normas, quantidade definida, nome de empresa/CNPJ pesam para "Dentro do foco" — mas SOMENTE quando o pedido é da modalidade certa (ver critério 1).
+7. Sinais de ruído. Teste interno (QA, e-mails de qualidade), spam, concorrente se oferecendo, marca/modelo que o cliente não vende, ou lead avisando que já comprou em outro lugar = "Fora do foco" independente do produto.
+8. Mensagem inteiramente em inglês. Se a mensagem do lead estiver totalmente escrita em inglês (ex. "Dear Sir/Madam, we are interested in your products..."), classifique como "Fora do foco" — são tipicamente bots ou contatos genéricos internacionais fora do público-alvo. Isso vale mesmo que a mensagem pareça pedir um produto do cliente. NÃO se aplica a mensagens em português que contenham apenas termos técnicos ou nomes de produto em inglês (ex. "máquina laser CO2", "new laser nli390") — essas continuam sendo avaliadas normalmente.
+9. Regras específicas do cliente (se fornecidas no perfil) têm prioridade sobre os critérios gerais.
 
 Regras de saída:
 - STATUS deve ser EXATAMENTE um destes: "Dentro do foco", "Fora do foco", "Aberto".
 - MOTIVO: uma frase objetiva em português citando a evidência da própria mensagem. O motivo deve justificar o STATUS escolhido, não outro.
-- Mensagens vagas demais para julgar (ex. apenas "aço inox", apenas "me manda o e-mail", uma palavra solta sem contexto de compra) = "Aberto". NUNCA marque "Dentro do foco" sem evidência de interesse na modalidade certa (compra do produto que o cliente vende).
+- Mensagens vagas demais para julgar (ex. apenas "aço inox", apenas "me manda o e-mail", uma palavra solta sem contexto de compra) = "Aberto". NUNCA marque "Dentro do foco" sem evidência de interesse na modalidade certa (compra do produto que o cliente vende) — o vínculo com um "Anúncio do cliente", sozinho, sem a mensagem nomear o produto, não é evidência suficiente (ver critério 2b).
 - Peças, componentes e insumos avulsos (ex. fonte, tubo de laser, lentes) = "Fora do foco" quando o cliente vende máquinas completas, salvo indicação contrária no perfil.
 - Mensagens idênticas ou quase idênticas (mesmo texto em vários leads) DEVEM receber exatamente a mesma classificação e o mesmo motivo — revise antes de responder.
-- Mensagem inteiramente em inglês = "Fora do foco" (ver critério 7), com motivo indicando que é mensagem em inglês / provável bot.
+- Mensagem inteiramente em inglês = "Fora do foco" (ver critério 8), com motivo indicando que é mensagem em inglês / provável bot.
 - Responda SOMENTE com um objeto JSON: {"resultados": [{"id": "...", "status": "...", "motivo": "..."}]} — um item por lead, na mesma ordem."""
 
 
@@ -585,11 +601,11 @@ def gerar_dashboard_html(empresa, chave, periodo, total, contagem,
     return html
 
 
-# ---------- IA (Cerebras ou Groq, compatíveis com OpenAI) ----------
+# ---------- IA (Cerebras, Groq, SambaNova ou Gemini, compatíveis com OpenAI) ----------
 
 def provedores_ativos():
     """Retorna a lista de provedores com chave configurada (Cerebras primeiro)."""
-    return [n for n in ("cerebras", "groq") if secret(PROVEDORES[n]["chave"])]
+    return [n for n in ("cerebras", "groq", "sambanova", "gemini") if secret(PROVEDORES[n]["chave"])]
 
 
 def _extrair_lista(parsed):
@@ -677,7 +693,8 @@ def chamar_ia(perfil, lote, ordem, modelo_forcado=None):
         raise RuntimeError(
             "Cota diária esgotada em todos os provedores de IA configurados "
             f"({', '.join(esgotados)}). Renova às 21h (horário de Brasília), ou adicione "
-            "outra chave (CEREBRAS_API_KEY ou GROQ_API_KEY) nos Secrets para continuar agora."
+            "outra chave (CEREBRAS_API_KEY, GROQ_API_KEY, SAMBANOVA_API_KEY ou GEMINI_API_KEY) "
+            "nos Secrets para continuar agora."
         )
     if ultima:
         raise ultima
@@ -1113,7 +1130,8 @@ if validar:
     st.session_state["confirmar_limpar"] = False  # desarma um "Confirmar limpeza?" pendente
     ordem_ia = provedores_ativos()
     if not ordem_ia:
-        st.error("Nenhuma chave de IA configurada. Adicione CEREBRAS_API_KEY ou GROQ_API_KEY nos Secrets.")
+        st.error("Nenhuma chave de IA configurada. Adicione CEREBRAS_API_KEY, GROQ_API_KEY, "
+                 "SAMBANOVA_API_KEY ou GEMINI_API_KEY nos Secrets.")
         st.stop()
     if not secret("METABASE_URL"):
         st.error("Segredo METABASE_URL não configurado (ex.: https://metabase.ferramentademarketing.com.br).")
@@ -1136,7 +1154,7 @@ if validar:
             st.stop()
         ordem_ia = [prov] + [p for p in ordem_ia if p != prov]   # escolhido primeiro, resto como reserva
 
-    nomes_ia = {"cerebras": "Cerebras", "groq": "Groq"}
+    nomes_ia = {"cerebras": "Cerebras", "groq": "Groq", "sambanova": "SambaNova", "gemini": "Gemini"}
     if modelo_forcado:
         st.caption(f"IA: {modelo_escolha}"
                    + (f" · reserva: {nomes_ia[ordem_ia[1]]}" if len(ordem_ia) > 1 else ""))
