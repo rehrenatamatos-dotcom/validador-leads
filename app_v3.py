@@ -510,6 +510,8 @@ def gerar_xlsx(cabecalho, registros, leads, classificacoes):
     for col in ws.columns:
         larg = min(60, max(12, max((len(str(c.value)) if c.value else 0) for c in col) + 2))
         ws.column_dimensions[col[0].column_letter].width = larg
+    for linha in range(1, ws.max_row + 1):
+        ws.row_dimensions[linha].height = 21
     ws.freeze_panes = "A2"
     buf = io.BytesIO()
     wb.save(buf)
