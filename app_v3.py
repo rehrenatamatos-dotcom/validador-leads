@@ -40,7 +40,30 @@ def svg_logo_si(cor, fundo):
 FILL_DENTRO = PatternFill("solid", fgColor="C6EFCE")   # verde
 FILL_FORA = PatternFill("solid", fgColor="FFC7CE")     # vermelho
 FILL_ABERTO = PatternFill("solid", fgColor="FFEB9C")   # âmbar
+FILL_DUPLICADO = PatternFill("solid", fgColor="D9D9D9")  # cinza — duplicado, não passou pela IA
 FILL_CABECALHO = PatternFill("solid", fgColor="0C447C")  # azul escuro
+
+MESES_PT = {
+    "janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4, "maio": 5, "junho": 6,
+    "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
+}
+
+
+def normalizar_data_orcamento(texto):
+    """Converte 'maio 4, 2026, 4:47 PM' (formato do Metabase) numa chave por
+    MINUTO ('2026-05-04 16:47'), pra comparar horários sem depender de locale
+    do servidor. Sem segundos — o Metabase não exporta essa granularidade.
+    Retorna "" se não conseguir interpretar (nunca conta como duplicado)."""
+    try:
+        mes_dia, ano_str, hora_str = [p.strip() for p in texto.strip().split(",")]
+        mes_nome, dia_str = mes_dia.split()
+        mes = MESES_PT.get(mes_nome.lower())
+        if not mes:
+            return ""
+        hora_dt = datetime.strptime(hora_str, "%I:%M %p")
+        return f"{int(ano_str):04d}-{mes:02d}-{int(dia_str):02d} {hora_dt.hour:02d}:{hora_dt.minute:02d}"
+    except Exception:
+        return ""
 
 # Provedores gratuitos (APIs compatíveis com OpenAI). O app escolhe automaticamente:
 # se houver CEREBRAS_API_KEY nos Secrets usa Cerebras (cota diária bem maior);
@@ -478,7 +501,9 @@ def gerar_xlsx(cabecalho, registros, leads, classificacoes):
         })
         linha = list(r) + [c["status"], c["motivo"]]
         ws.append(linha)
-        fill = {"Dentro do foco": FILL_DENTRO, "Fora do foco": FILL_FORA}.get(c["status"], FILL_ABERTO)
+        fill = {
+            "Dentro do foco": FILL_DENTRO, "Fora do foco": FILL_FORA, "Duplicado": FILL_DUPLICADO,
+        }.get(c["status"], FILL_ABERTO)
         for cel in ws[ws.max_row]:
             cel.fill = fill
     # larguras aproximadas para leitura
@@ -1222,6 +1247,7 @@ if validar:
     idx_nome = idx_de("Nome do Comprador", "Nome do comprador")
     idx_email = idx_de("E-mail do Comprador", "Email do Comprador", "E-mail do comprador")
     idx_anuncio = idx_de("anúncio de origem do Orçamento", "Anúncio do cliente", "anuncio de origem do Orçamento")
+    idx_data = idx_de("Data da Solicitação do Orçamento", "Data da Solicitação")
 
     registros = [r for r in linhas[1:] if any(c.strip() for c in r)]
     st.info(f"{len(registros)} leads encontrados de {data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}.")
@@ -1235,20 +1261,55 @@ if validar:
             f"{cabecalho[j]}: {r[j]}" for j in range(len(cabecalho))
             if j != idx_msg and j < len(r) and r[j].strip()
         )[:500]
+        nome_raw = celula(r, idx_nome)
+        email_raw = celula(r, idx_email)
+        msg_raw = celula(r, idx_msg)
         leads.append({
             "id": f"L{i+2}",
             "mensagem": r[idx_msg] if idx_msg < len(r) else "",
             "extra": extra,
             "id_orc": celula(r, idx_id) or f"linha {i+2}",
-            "nome": celula(r, idx_nome) or "(sem nome)",
-            "email": celula(r, idx_email) or "(sem e-mail)",
+            "nome": nome_raw or "(sem nome)",
+            "email": email_raw or "(sem e-mail)",
             "anuncio": celula(r, idx_anuncio) or "(sem anúncio)",
-            "tam_msg": len(celula(r, idx_msg)),
+            "tam_msg": len(msg_raw),
+            "_dedup_chave": (nome_raw.lower(), email_raw.lower(), msg_raw.lower(),
+                             normalizar_data_orcamento(celula(r, idx_data))),
         })
+
+    # 5b. Duplicados de plataforma: mesmo nome + e-mail + mensagem + horário (minuto)
+    # exatamente iguais. Diferença de horário (mesmo por poucos minutos) NÃO conta
+    # como duplicado — pode ser o mesmo cliente cotando de novo, de verdade.
+    vistos_dedup = set()
+    duplicados_count = 0
+    for l in leads:
+        chave = l["_dedup_chave"]
+        completa = all(chave)  # só considera duplicado se nome/e-mail/mensagem/data vieram preenchidos
+        if completa and chave in vistos_dedup:
+            l["duplicado"] = True
+            duplicados_count += 1
+        else:
+            l["duplicado"] = False
+            if completa:
+                vistos_dedup.add(chave)
+    if duplicados_count:
+        st.warning(
+            f"{duplicados_count} lead(s) identificado(s) como duplicado de plataforma "
+            "(mesmo nome, e-mail, mensagem e horário) — marcados como \"Duplicado\" no Excel, "
+            "sem entrar na contagem, no dashboard nem na análise da IA."
+        )
+    leads_para_ia = [l for l in leads if not l["duplicado"]]
 
     # 6. Classificação com re-tentativas
     classificacoes = {}
     erros_ia = []
+    for l in leads:
+        if l["duplicado"]:
+            classificacoes[l["id"]] = {
+                "status": "Duplicado",
+                "motivo": "Mesmo nome, e-mail, mensagem e horário (minuto) de outro orçamento — "
+                          "provável duplicação da plataforma. Não entrou na análise da IA.",
+            }
 
     def processar(lista, tamanho_lote, rotulo):
         total_lotes = (len(lista) + tamanho_lote - 1) // tamanho_lote
@@ -1278,25 +1339,26 @@ if validar:
         progresso.empty()
 
     marcar_etapa(5, "Classificando leads com IA...")
-    processar(leads, TAMANHO_LOTE, "Classificando")
-    pendentes = [l for l in leads if l["id"] not in classificacoes]
+    processar(leads_para_ia, TAMANHO_LOTE, "Classificando")
+    pendentes = [l for l in leads_para_ia if l["id"] not in classificacoes]
     if pendentes:
         st.info(f"{len(pendentes)} lead(s) sem resposta — reprocessando em lotes menores...")
         time.sleep(5)
         processar(pendentes, 5, "Reprocessando")
-    pendentes = [l for l in leads if l["id"] not in classificacoes]
+    pendentes = [l for l in leads_para_ia if l["id"] not in classificacoes]
     if pendentes:
         time.sleep(5)
         processar(pendentes, 1, "Última passada")
-    falhas = sum(1 for l in leads if l["id"] not in classificacoes)
+    falhas = sum(1 for l in leads_para_ia if l["id"] not in classificacoes)
 
-    # 7. Contagem + rankings para o dashboard
+    # 7. Contagem + rankings para o dashboard — duplicados não entram aqui
     contagem = {"Dentro do foco": 0, "Fora do foco": 0, "Aberto": 0}
     for i in range(len(registros)):
         c = classificacoes.get(leads[i]["id"])
         status = c["status"] if c else "Aberto"
-        contagem[status] += 1
         leads[i]["status"] = status
+        if status != "Duplicado":
+            contagem[status] += 1
 
     dentro = [l for l in leads if l.get("status") == "Dentro do foco"]
     fora = [l for l in leads if l.get("status") == "Fora do foco"]
@@ -1312,9 +1374,11 @@ if validar:
     anuncios_ruins = sorted(cont_anuncios.items(), key=lambda x: x[1], reverse=True)[:8]
 
     # 8. Excel com destaque + dashboard
+    # o Excel leva TODAS as linhas (inclusive duplicados, marcados em cinza, para
+    # controle/auditoria) — mas o dashboard e as métricas contam só os leads reais.
     xlsx_bytes = gerar_xlsx(cabecalho, registros, leads, classificacoes)
 
-    total = len(registros)
+    total = len(registros) - duplicados_count
     periodo_txt = f"{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}"
     base_nome = f"{nome_empresa} - {data_inicio.isoformat()} a {data_fim.isoformat()}"
     dash_html = gerar_dashboard_html(nome_empresa, chave_unica.strip(), periodo_txt, total, contagem,
